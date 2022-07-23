@@ -1,12 +1,10 @@
 [
   {
     "name": "scalpingtermudah30PIPS",
-    "buyRegex": "0.00",
-    "sellRegex": "0.00"
+    "regex": "[a-zA-Z0-9 ]*[buy|sell]*[a-zA-Z0-9 ]* ([0-9]*) - ([0-9]*)\nTp1 : ([0-9]*)\nTp2 : ([0-9]*)\nTp3 : ([0-9]*)\nSL : ([0-9]*)"
   },
   {
     "name": "testdrith",
-    "buyRegex": "0.00",
-    "sellRegex": "0.00"
+    "regex": "[a-zA-Z0-9 ]*[buy|sell]*[a-zA-Z0-9 ]* ([0-9]*) - ([0-9]*)\nTp1 : ([0-9]*)\nTp2 : ([0-9]*)\nTp3 : ([0-9]*)\nSL : ([0-9]*)"
   }
 ]

@@ -6,6 +6,16 @@ import { writeEnvToFile } from './util/env';
 import { NewMessage, NewMessageEvent } from 'telegram/events/NewMessage';
 import channel from './channels.json';
 
+interface TradeOptions {
+  isBuy: boolean;
+  min: number;
+  max: number;
+  tp1: number;
+  tp2: number;
+  tp3: number;
+  sl: number;
+}
+
 export class Bot {
   constructor() {
     this.client = new TelegramClient(
@@ -40,9 +50,21 @@ export class Bot {
     const sender = await event.message
       .getSender()
       .then((sender: Api.Channel) => sender.username);
-
-    if (channel.map((c) => c.name).includes(sender)) {
-      console.log(`${sender}: ${message}`);
+    const activeChannel = channel.find((c) => c.name === sender);
+    if (activeChannel) {
+      const matches = RegExp(activeChannel.regex).exec(message);
+      if (matches && matches.length === 7) {
+        const options: TradeOptions = {
+          isBuy: message.toLowerCase().includes('buy'),
+          min: parseFloat(matches[1]),
+          max: parseFloat(matches[2]),
+          tp1: parseFloat(matches[3]),
+          tp2: parseFloat(matches[4]),
+          tp3: parseFloat(matches[5]),
+          sl: parseFloat(matches[6]),
+        };
+        console.log(options);
+      }
     }
   }
 }
