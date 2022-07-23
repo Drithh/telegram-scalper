@@ -36,12 +36,8 @@
     "dotenv": "^16.0.1",
     "envfile": "^6.17.0",
     "input": "^1.0.1",
-    "metaapi.cloud-sdk": "^19.7.0",
-    "mql5-connector-js": "^0.0.1",
-    "mt4-zmq-bridge": "^1.2.0",
     "telegram": "^2.9.10",
-    "tslib": "~2.4",
-    "zeromq": "^5.2.8"
+    "tslib": "~2.4"
   },
   "volta": {
     "node": "16.13.0"

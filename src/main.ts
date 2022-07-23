@@ -1,16 +1,32 @@
-// import { Bot } from './telegram-bot';
-import zmq from 'zeromq';
-const sock = zmq.socket('push');
+// import { ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
+import { Bot } from './telegram-bot';
+// class RFModel {
+//   constructor() {
+//     this.python = spawn('python', ['forex/main.py']);
+
+//     this.python.stdout.on('data', (data) => {
+//       this.receive(data);
+//     });
+
+//     this.python.on('close', async function () {
+//       console.log(`exited gracefully`);
+//     });
+//   }
+
+//   private python: ChildProcessWithoutNullStreams;
+
+//   send(data: string) {
+//     this.python.stdin.write(data);
+//   }
+
+//   receive(data: { toString: () => string }) {
+//     const datas = JSON.parse(data.toString());
+//     console.log(datas);
+//   }
+// }
 
 (async () => {
-  // const bot = new Bot();
-  // await bot.start();
-
-  sock.bindSync('tcp://127.0.0.1:15555');
-  console.log('Producer bound to port 3000');
-
-  setInterval(function () {
-    console.log('sending work');
-    sock.send('some work');
-  }, 1000);
+  // new RFModel();
+  const bot = new Bot();
+  await bot.start();
 })();

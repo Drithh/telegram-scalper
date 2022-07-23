@@ -19,9 +19,11 @@ interface TradeOptions {
 export class Bot {
   constructor() {
     this.client = new TelegramClient(
-      new StringSession(process.env.STRING_SESSION),
-      parseInt(process.env.API_ID),
-      process.env.API_HASH,
+      new StringSession(
+        process.env.STRING_SESSION ? process.env.STRING_SESSION : '',
+      ),
+      parseInt(process.env.API_ID ? process.env.API_ID : '0'),
+      process.env.API_HASH ? process.env.API_HASH : '',
       {
         connectionRetries: 5,
       },
@@ -31,25 +33,29 @@ export class Bot {
   private client: TelegramClient;
 
   async start(): Promise<void> {
-    this.client.start({
-      phoneNumber: async () => await input.text('Please enter your number: '),
+    await this.client.start({
+      phoneNumber: async () => {
+        return process.env.PHONE_NUMBER
+          ? process.env.PHONE_NUMBER
+          : await input.text('Please enter your number: ');
+      },
       password: async () => await input.text('Please enter your password: '),
       phoneCode: async () =>
         await input.text('Please enter the code you received: '),
       onError: (err) => console.log(err),
     });
-    writeEnvToFile([
-      { key: 'STRING_SESSION', value: this.client.session.save() },
-    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stringSession: any = this.client.session.save();
+    writeEnvToFile([{ key: 'STRING_SESSION', value: stringSession }]);
     await this.client.connect();
     this.client.addEventHandler(this.eventPrint, new NewMessage({}));
   }
 
   async eventPrint(event: NewMessageEvent) {
     const message = event.message.message;
-    const sender = await event.message
-      .getSender()
-      .then((sender: Api.Channel) => sender.username);
+    const sender = await event.message.getSender().then((sender) => {
+      return (sender as Api.Channel).username;
+    });
     const activeChannel = channel.find((c) => c.name === sender);
     if (activeChannel) {
       const matches = RegExp(activeChannel.regex).exec(message);
