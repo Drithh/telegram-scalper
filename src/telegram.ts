@@ -16,7 +16,7 @@ interface TradeOptions {
   sl: number;
 }
 
-export class Bot {
+export class Telegram {
   constructor() {
     this.client = new TelegramClient(
       new StringSession(

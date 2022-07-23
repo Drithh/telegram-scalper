@@ -1,11 +1,11 @@
 import MetaTrader5 as mt5
 from dotenv import dotenv_values
-from util import show_active_order, order_send
+from util import resolve_call
 config = dotenv_values(".env")
+
 import sys
 
 import json 
-
 def output(status: str, message):
     result = {
         "status": status,
@@ -27,8 +27,8 @@ else:
     password=config['PASSWORD'].encode('utf-8')
     server=config['SERVER']
     if not mt5.login(account, password, server):
-        output('success', (mt5.account_info()._asdict()))
-        output('success', show_active_order());
+        result = resolve_call(sys.argv[1])
+        output('success', result);
         # order_send();
     else:
         print("failed to connect at account #{}, error code: {}".format(account, mt5.last_error()))

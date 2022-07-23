@@ -2,6 +2,23 @@ import MetaTrader5 as mt5
 import pandas as pd
 import time
 
+def resolve_call(call):
+    if call=="info":
+        return show_info()
+    elif call=="order_send":
+        return order_send()
+    elif call=="show_active_order":
+        return show_active_order()
+    else:
+        print("Unknown call:",call)
+        print("Valid calls: order_send, show_active_order")
+        print("Shutdown and quit")
+        mt5.shutdown()
+        quit()
+
+def show_info():
+    return mt5.account_info()._asdict()
+
 def show_active_order():
     orders=mt5.orders_get(group="XAUUSD")
     if (len(orders) == 0):
