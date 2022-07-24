@@ -1,20 +1,14 @@
 import { ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
-import { Telegram } from './telegram';
 import { messageParser } from './util/message-parser';
+import events from 'events';
+
 interface Result {
   status: string;
   message: string | JSON;
 }
 export class Trade {
-  constructor(telegram: Telegram) {
-    this.telegram = telegram;
-    telegram.event.on('message', (message) => {
-      this.receive(message);
-    });
-  }
-
   private python: ChildProcessWithoutNullStreams;
-  private telegram: Telegram;
+  public event = new events.EventEmitter();
 
   call(args: string[]) {
     this.python = spawn('python', ['forex/main.py', ...args]);
@@ -27,9 +21,9 @@ export class Trade {
   receive(data: { toString: () => string }) {
     const result: Result = JSON.parse(data.toString());
     if (typeof result.message === 'string') {
-      this.telegram.sendMessage(result.message);
+      this.event.emit('message', result.message);
     } else {
-      this.telegram.sendMessage(messageParser(result));
+      this.event.emit('message', messageParser(result));
     }
   }
 }

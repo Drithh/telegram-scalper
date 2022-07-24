@@ -1,11 +1,11 @@
 import MetaTrader5 as mt5
+import sys
+import json 
 from dotenv import dotenv_values
 from util import resolve_call
+
 config = dotenv_values(".env")
 
-import sys
-
-import json 
 def output(status: str, message):
     result = {
         "status": status,
@@ -27,7 +27,11 @@ else:
     password=config['PASSWORD'].encode('utf-8')
     server=config['SERVER']
     if not mt5.login(account, password, server):
-        result = resolve_call('info')
+        match sys.argv[1]:
+            case 'info':
+                result =  resolve_call('info')
+            case 'order_send': 
+                result =  resolve_call('order_send')
         output(result[0], result[1]);
         # order_send();
     else:

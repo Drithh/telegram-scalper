@@ -2,8 +2,13 @@ import { Telegram } from './telegram';
 import { Trade } from './trade';
 
 (async () => {
+  const trade = new Trade();
   const telegram = new Telegram();
-  await telegram.start();
-  const trade = new Trade(telegram);
-  trade.call(['info']);
+
+  trade.event.on('message', (message) => {
+    telegram.sendMessage(message);
+  });
+  telegram.event.on('message', (event: string[]) => {
+    trade.call(event);
+  });
 })();
