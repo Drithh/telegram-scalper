@@ -4,8 +4,8 @@ import input from 'input';
 import 'dotenv/config';
 import { writeEnvToFile } from './util/env';
 import { NewMessage, NewMessageEvent } from 'telegram/events/NewMessage';
-import channel from './channels.json';
-
+import channels from './channels.json';
+import events from 'events';
 interface TradeOptions {
   isBuy: boolean;
   min: number;
@@ -31,6 +31,7 @@ export class Telegram {
   }
 
   private client: TelegramClient;
+  public event = new events.EventEmitter();
 
   async start(): Promise<void> {
     await this.client.start({
@@ -53,24 +54,52 @@ export class Telegram {
 
   async eventPrint(event: NewMessageEvent) {
     const message = event.message.message;
-    const sender = await event.message.getSender().then((sender) => {
-      return (sender as Api.Channel).username;
-    });
-    const activeChannel = channel.find((c) => c.name === sender);
-    if (activeChannel) {
-      const matches = RegExp(activeChannel.regex).exec(message);
-      if (matches && matches.length === 7) {
-        const options: TradeOptions = {
-          isBuy: message.toLowerCase().includes('buy'),
-          min: parseFloat(matches[1]),
-          max: parseFloat(matches[2]),
-          tp1: parseFloat(matches[3]),
-          tp2: parseFloat(matches[4]),
-          tp3: parseFloat(matches[5]),
-          sl: parseFloat(matches[6]),
-        };
-        console.log(options);
+    const sender = await event.message.getSender();
+    if (sender.className === 'User') {
+      if (sender.id.toString() === process.env.OWNER_ID) {
+        console.log(sender);
+      }
+    } else if (sender.className === 'Channel') {
+      const activeChannel = channels.find((c) => c.name === sender.username);
+      if (activeChannel) {
+        const matches = RegExp(activeChannel.regex).exec(message);
+        if (matches && matches.length === 7) {
+          const options: TradeOptions = {
+            isBuy: message.toLowerCase().includes('buy'),
+            min: parseFloat(matches[1]),
+            max: parseFloat(matches[2]),
+            tp1: parseFloat(matches[3]),
+            tp2: parseFloat(matches[4]),
+            tp3: parseFloat(matches[5]),
+            sl: parseFloat(matches[6]),
+          };
+          console.log(options);
+        }
       }
     }
   }
+
+  async sendMessage(message: string) {
+    const result = await this.client.invoke(
+      new Api.messages.SendMessage({
+        peer: process.env.OWNER_USERNAME,
+        message: message,
+        noWebpage: true,
+        scheduleDate: 43,
+      }),
+    );
+    console.log(result);
+  }
+
+  resolveMessage = (message: string) => {
+    switch (message) {
+      case 'info':
+        this.event.emit('event', 'info');
+        break;
+
+      default:
+        this.sendMessage('command not found\nsend /help for help');
+        break;
+    }
+  };
 }

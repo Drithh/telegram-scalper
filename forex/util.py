@@ -4,7 +4,7 @@ import time
 
 def resolve_call(call):
     if call=="info":
-        return show_info()
+        return ['info', show_info()]
     elif call=="order_send":
         return order_send()
     elif call=="show_active_order":

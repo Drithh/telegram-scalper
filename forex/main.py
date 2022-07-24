@@ -27,8 +27,8 @@ else:
     password=config['PASSWORD'].encode('utf-8')
     server=config['SERVER']
     if not mt5.login(account, password, server):
-        result = resolve_call(sys.argv[1])
-        output('success', result);
+        result = resolve_call('info')
+        output(result[0], result[1]);
         # order_send();
     else:
         print("failed to connect at account #{}, error code: {}".format(account, mt5.last_error()))
