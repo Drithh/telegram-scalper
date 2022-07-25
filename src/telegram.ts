@@ -132,9 +132,9 @@ export class Telegram {
           } else {
             const args = arg[1].split(' ');
             if (
-              !isNaN(parseInt(args[1])) ||
-              args[1] === 'all' ||
-              args[1] === 'half'
+              !isNaN(parseInt(args[0])) ||
+              args[0] === 'all' ||
+              args[0] === 'half'
             ) {
               const closeMessage = ['close'].concat(arg[1].split(' '));
               this.event.emit('message', closeMessage);
@@ -157,8 +157,8 @@ export class Telegram {
           } else {
             const args = arg[1].split(' ');
             if (
-              (!isNaN(parseInt(args[2])) && args[1] === 'tp') ||
-              args[1] === 'sl'
+              (!isNaN(parseInt(args[1])) && args[0] === 'tp') ||
+              args[0] === 'sl'
             ) {
               const editMessage = ['edit'].concat(arg[1].split(' '));
               this.event.emit('message', editMessage);

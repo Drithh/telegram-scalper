@@ -35,11 +35,12 @@ interface ActiveOrder {
 }
 
 const activeOrders = (orders: ActiveOrder[]): string => {
-  return orders
+  const orderString = orders
     .map((order) => {
-      return `Ticket: ${order.ticket}\nPrice Open: ${order.price_open}\nSL: ${order.sl}\nTP: ${order.tp}\nPrice Current: ${order.price_current}\nProfit: ${order.profit}\n\n`;
+      return `Symbol: ${order.symbol}\nTicket: ${order.ticket}\nPrice Open: ${order.price_open}\nSL: ${order.sl}\nTP: ${order.tp}\nPrice Current: ${order.price_current}\nProfit: ${order.profit}\n\n`;
     })
     .join('\n');
+  return `There are ${orders.length} active positions\n\n${orderString}`;
 };
 
 interface AccountInfo {

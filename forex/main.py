@@ -31,12 +31,15 @@ else:
     if not mt5.login(account, password, server):
         match sys.argv[1]:
             case 'info':
-                result =  resolve_call('info')
+                 resolve_call('info')
             case 'buy' | 'sell':
-                result =  resolve_call('order_send', sys.argv[1], sys.argv[2])
+                 resolve_call('open_orders', sys.argv[1], sys.argv[2])
             case 'active':
-                result = resolve_call('show_active_positions')
-        output(result[0], result[1]);
+                resolve_call('show_active_positions')
+            case 'close':
+                resolve_call('close_position', sys.argv[2])
+            case 'edit':
+                resolve_call('edit_position', sys.argv[2], sys.argv[3])
         # order_send();
     else:
         print("failed to connect at account #{}, error code: {}".format(account, mt5.last_error()))

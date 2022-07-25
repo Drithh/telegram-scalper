@@ -10,12 +10,6 @@ import 'dotenv/config';
     telegram.sendMessage(message);
   });
   telegram.event.on('message', (event: string[]) => {
-    if (event[0] === 'buy' || event[0] === 'sell') {
-      for (let i = 0; i < parseInt(process.env.TRADE_AMOUNT); i++) {
-        trade.call(event);
-      }
-    } else {
-      trade.call(event);
-    }
+    trade.call(event);
   });
 })();
