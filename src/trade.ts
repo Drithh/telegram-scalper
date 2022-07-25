@@ -20,6 +20,7 @@ export class Trade {
 
   receive(data: { toString: () => string }) {
     const result: Result = JSON.parse(data.toString());
+    console.log(result);
     if (typeof result.message === 'string') {
       this.event.emit('message', result.message);
     } else {

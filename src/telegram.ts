@@ -81,7 +81,7 @@ export class Telegram {
   }
 
   async sendMessage(message: string) {
-    const result = await this.client.invoke(
+    await this.client.invoke(
       new Api.messages.SendMessage({
         peer: process.env.OWNER_USERNAME,
         message: message,
@@ -89,7 +89,6 @@ export class Telegram {
         scheduleDate: 43,
       }),
     );
-    console.log(result);
   }
 
   resolveMessage = (message: string) => {
@@ -100,18 +99,11 @@ export class Telegram {
       case message.match('/buy') ? message : undefined:
         {
           const arg = message.match('/buy (.*)');
-          if (!arg || arg[1].split(' ').length !== 4) {
-            this.sendMessage(
-              'Invalid arguments\n/buy <amount> <max_price> <tp> <sl>',
-            );
+          if (!arg || arg[1].split(' ').length !== 1) {
+            this.sendMessage('Invalid arguments\n/buy <max_price>');
           } else {
-            const args = arg[1].split(' ');
-            if (
-              args.every((a) => !isNaN(parseFloat(a))) &&
-              args.every((a) => !isNaN(parseInt(a)))
-            ) {
-              const buyMessage = ['buy'].concat(arg[1].split(' '));
-              this.event.emit('message', buyMessage);
+            if (!isNaN(parseFloat(arg[1])) && !isNaN(parseInt(arg[1]))) {
+              this.event.emit('message', ['buy', arg[1]]);
             } else {
               this.sendMessage('Invalid arguments\narguments must be numbers');
             }
@@ -121,18 +113,11 @@ export class Telegram {
       case message.match('/sell') ? message : undefined:
         {
           const arg = message.match('/sell (.*)');
-          if (!arg || arg[1].split(' ').length !== 4) {
-            this.sendMessage(
-              'Invalid arguments\n/sell <amount> <min_price> <tp> <sl>',
-            );
+          if (!arg || arg[1].split(' ').length !== 1) {
+            this.sendMessage('Invalid arguments\n/sell <max_price>');
           } else {
-            const args = arg[1].split(' ');
-            if (
-              args.every((a) => !isNaN(parseFloat(a))) &&
-              args.every((a) => !isNaN(parseInt(a)))
-            ) {
-              const sellMessage = ['sell'].concat(arg[1].split(' '));
-              this.event.emit('message', sellMessage);
+            if (!isNaN(parseFloat(arg[1])) && !isNaN(parseInt(arg[1]))) {
+              this.event.emit('message', ['sell', arg[1]]);
             } else {
               this.sendMessage('Invalid arguments\narguments must be numbers');
             }
@@ -154,23 +139,26 @@ export class Telegram {
               const closeMessage = ['close'].concat(arg[1].split(' '));
               this.event.emit('message', closeMessage);
             } else {
-              this.sendMessage('Invalid arguments\narguments must be numbers');
+              this.sendMessage(
+                'Invalid arguments\narguments must be numbers or half or all',
+              );
             }
           }
         }
         break;
+      case '/active':
+        this.event.emit('message', ['active']);
+        break;
       case message.match('/edit') ? message : undefined:
         {
           const arg = message.match('/edit (.*)');
-          if (!arg || arg[1].split(' ').length !== 4) {
-            this.sendMessage(
-              'Invalid arguments\n/edit <amount> <max_price> <tp> <sl>',
-            );
+          if (!arg || arg[1].split(' ').length !== 2) {
+            this.sendMessage('Invalid arguments\n/edit <options> <pip>');
           } else {
             const args = arg[1].split(' ');
             if (
-              args.every((a) => !isNaN(parseFloat(a))) &&
-              args.every((a) => !isNaN(parseInt(a)))
+              (!isNaN(parseInt(args[2])) && args[1] === 'tp') ||
+              args[1] === 'sl'
             ) {
               const editMessage = ['edit'].concat(arg[1].split(' '));
               this.event.emit('message', editMessage);

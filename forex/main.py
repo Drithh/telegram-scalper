@@ -1,8 +1,8 @@
 import MetaTrader5 as mt5
 import sys
 import json 
-from dotenv import dotenv_values
 from util import resolve_call
+from dotenv import dotenv_values
 
 config = dotenv_values(".env")
 
@@ -13,6 +13,8 @@ def output(status: str, message):
     }
     print(json.dumps(result))
     sys.stdout.flush()
+    mt5.shutdown()
+    quit()
     
 
 if not mt5.initialize():
@@ -30,8 +32,10 @@ else:
         match sys.argv[1]:
             case 'info':
                 result =  resolve_call('info')
-            case 'order_send': 
-                result =  resolve_call('order_send')
+            case 'buy' | 'sell':
+                result =  resolve_call('order_send', sys.argv[1], sys.argv[2])
+            case 'active':
+                result = resolve_call('show_active_positions')
         output(result[0], result[1]);
         # order_send();
     else:
