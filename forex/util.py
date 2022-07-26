@@ -25,8 +25,10 @@ symbol = 'XAUUSD'
 def resolve_call(call, *args):
     if call=="info":
         output('info', show_info())
-    elif call=="open_orders":
-        return open_positions(args[0], args[1])
+    elif call=="order_limit":
+        return order_limit(args[0], args[1])
+    elif call=="order_now":
+        return order_now(args[0])
     elif call=="show_active_positions":
         return show_active_positions()
     elif call=="close_position":
@@ -86,7 +88,7 @@ def close_position(close_amount):
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script close",
-                "type_time": mt5.ORDER_TIME_GTC,
+                "type_time": mt5.ORDER_TIME_DAY,
                 "type_filling": mt5.ORDER_FILLING_FOK,
             }
             result=mt5.order_send(request)
@@ -96,13 +98,63 @@ def close_position(close_amount):
             else:
                 output("success", f"Close Order success, {symbol} {lot} lots at {price} \nProfit: {position['profit']}")
 
-def open_positions(type, max_price):
+def order_now(type):
+    # prepare the buy request structure
+    success = 0
+    symbol_info = mt5.symbol_info(symbol)
+    if symbol_info is None:
+        output_exit( "fail", symbol+"not found, can not call order_check()" )
+    
+    # if the symbol is unavailable in MarketWatch, add it
+    if not symbol_info.visible:
+        if not mt5.symbol_select(symbol,True):
+            output_exit( "fail", f"symbol_select {symbol} failed, exit")
     for i in range(int(config["TRADE_AMOUNT"])):
-        open_position(type, max_price)
-    mt5.shutdown()
-    quit()
-
-def open_position(type, max_price):
+        lot = float(config['TRADE_VOLUME'])
+        point = mt5.symbol_info(symbol).point
+        price = mt5.symbol_info_tick(symbol).ask
+        deviation = 20
+        
+        if (type == "buy"):
+            request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": lot,
+                "type": mt5.ORDER_TYPE_BUY,
+                "price": price,
+                "sl": price - 500 * point,
+                "tp": price + 300 * point,
+                "deviation": deviation,
+                "magic": 234000,
+                "comment": "python script open",
+                "type_time": mt5.ORDER_TIME_DAY,
+                "type_filling": mt5.ORDER_FILLING_FOK,
+            }
+        else:
+            request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": lot,
+                "type": mt5.ORDER_TYPE_SELL,
+                "price": price,
+                "sl": price + 500 * point,
+                "tp": price - 300 * point,
+                "deviation": deviation,
+                "magic": 234000,
+                "comment": "python script open",
+                "type_time": mt5.ORDER_TIME_DAY,
+                "type_filling": mt5.ORDER_FILLING_FOK,
+            }
+        
+        result = mt5.order_send(request)
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            output_exit("fail", f"Order failed, retcode={result.retcode}")
+        else:
+            success += 1
+    output("success", f"Successfully placed {success} orders in {symbol} for {price}")
+    
+def order_limit(type, max_price):
+    success = 0
     # prepare the buy request structure
     symbol_info = mt5.symbol_info(symbol)
     if symbol_info is None:
@@ -112,52 +164,51 @@ def open_position(type, max_price):
     if not symbol_info.visible:
         if not mt5.symbol_select(symbol,True):
             output_exit( "fail", f"symbol_select {symbol} failed, exit")
+    for i in range(int(config["TRADE_AMOUNT"])):
+        lot = float(config['TRADE_VOLUME'])
+        point = mt5.symbol_info(symbol).point
+        price = float(max_price)
+        deviation = 20
+        
+        if (type == "buy"):
+            request = {
+                "action": mt5.TRADE_ACTION_PENDING,
+                "symbol": symbol,
+                "volume": lot,
+                "type": mt5.ORDER_TYPE_BUY_LIMIT,
+                "price": price,
+                "sl": price - 500 * point,
+                "tp": price + 300 * point,
+                "deviation": deviation,
+                "magic": 234000,
+                "comment": "python script open",
+                "type_time": mt5.ORDER_TIME_DAY,
+                "type_filling": mt5.ORDER_FILLING_FOK,
+            }
+        else:
+            request = {
+                "action": mt5.TRADE_ACTION_PENDING,
+                "symbol": symbol,
+                "volume": lot,
+                "type": mt5.ORDER_TYPE_SELL_LIMIT,
+                "price": float(max_price),
+                "sl": price + 500 * point,
+                "tp": price - 300 * point,
+                "deviation": deviation,
+                "magic": 234000,
+                "comment": "python script open",
+                "type_time": mt5.ORDER_TIME_DAY,
+                "type_filling": mt5.ORDER_FILLING_FOK,
+            }
+        
+        result = mt5.order_send(request)
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            output_exit("fail", f"Order failed, retcode={result.retcode}")
+        else:
+            success += 1
+    output("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
     
-    lot = float(config['TRADE_VOLUME'])
-    point = mt5.symbol_info(symbol).point
-    price = mt5.symbol_info_tick(symbol).ask
-    deviation = 20
-    if (type == "buy"):
-        if (price <= float(max_price)):
-            output_exit( "fail", f"Price {price} is too high\nThe max price is {max_price}")
-        request = {
-            "action": mt5.TRADE_ACTION_DEAL,
-            "symbol": symbol,
-            "volume": lot,
-            "type": mt5.ORDER_TYPE_BUY,
-            "price": price,
-            "sl": price - 500 * point,
-            "tp": price + 300 * point,
-            "deviation": deviation,
-            "magic": 234000,
-            "comment": "python script open",
-            "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_FOK,
-        }
-    else:
-        if (price >= float(max_price)):
-            output_exit("fail", f"Price {price} is too low\nYour max price is {max_price}")
-        request = {
-            "action": mt5.TRADE_ACTION_DEAL,
-            "symbol": symbol,
-            "volume": lot,
-            "type": mt5.ORDER_TYPE_SELL,
-            "price": price,
-            "sl": price + 500 * point,
-            "tp": price - 300 * point,
-            "deviation": deviation,
-            "magic": 234000,
-            "comment": "python script open",
-            "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_FOK,
-        }
-    
-    result = mt5.order_send(request)
-    if result.retcode != mt5.TRADE_RETCODE_DONE:
-        output_exit("fail", f"Order failed, retcode={result.retcode}")
 
-    else:
-        output("success", f"Order success, {type.capitalize()} {symbol} {lot} lots at {price} with deviation={deviation} points");
 
 def edit_position(key, value):
     active_positions=get_active_positions()
@@ -174,6 +225,16 @@ def edit_position(key, value):
             price=mt5.symbol_info_tick(symbol).bid
             deviation=20
             point = mt5.symbol_info(symbol).point
+            sl = position['sl']
+            tp = position['tp']
+            if (key == "be"):
+                sl = position['price_open'] + value * point
+                tp += value * point
+            else: 
+                if (key == "sl"):
+                    sl +=  value * point
+                if (key == "tp"):
+                    tp += value * point
             request={
                 "action": mt5.TRADE_ACTION_SLTP,
                 "symbol": symbol,
@@ -181,8 +242,8 @@ def edit_position(key, value):
                 "type": mt5.ORDER_TYPE_BUY if position['type'] == 0 else mt5.ORDER_TYPE_SELL,
                 "position": position['ticket'],
                 "price": price,
-                "sl": position['sl'] - value * point  if key == "sl" else position['sl'],
-                "tp": position['tp'] + value * point  if key == "tp" else position['tp'],
+                "sl": sl,
+                "tp": tp,
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script close",
@@ -190,9 +251,8 @@ def edit_position(key, value):
                 "type_filling": mt5.ORDER_FILLING_FOK,
             }
             result=mt5.order_send(request)
-
             if result.retcode != mt5.TRADE_RETCODE_DONE:
-                output_exit("fail", f"Close Order failed, retcode={result.retcode}")
+                output_exit("fail", f"Edit Order failed, retcode={result.retcode}")
             # else:
                 # output("success", f"Edit Order success, {symbol} {lot} lots at {position['price_open']} \n{key}: {value}")
         output("success", f"Edit {len(active_positions[1])} Order success, {'subtract' if isReduce else 'add'} {abs(value)} pip to {key}")

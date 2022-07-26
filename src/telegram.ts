@@ -102,8 +102,15 @@ export class Telegram {
           if (!arg || arg[1].split(' ').length !== 1) {
             this.sendMessage('Invalid arguments\n/buy <max_price>');
           } else {
-            if (!isNaN(parseFloat(arg[1])) && !isNaN(parseInt(arg[1]))) {
-              this.event.emit('message', ['buy', arg[1]]);
+            if (
+              (!isNaN(parseFloat(arg[1])) && !isNaN(parseInt(arg[1]))) ||
+              arg[1] === 'now'
+            ) {
+              if (arg[1] === 'now') {
+                this.event.emit('message', ['buy']);
+              } else {
+                this.event.emit('message', ['buy', arg[1]]);
+              }
             } else {
               this.sendMessage('Invalid arguments\narguments must be numbers');
             }
@@ -158,7 +165,8 @@ export class Telegram {
             const args = arg[1].split(' ');
             if (
               (!isNaN(parseInt(args[1])) && args[0] === 'tp') ||
-              args[0] === 'sl'
+              args[0] === 'sl' ||
+              args[0] === 'be'
             ) {
               const editMessage = ['edit'].concat(arg[1].split(' '));
               this.event.emit('message', editMessage);

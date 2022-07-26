@@ -31,9 +31,12 @@ else:
     if not mt5.login(account, password, server):
         match sys.argv[1]:
             case 'info':
-                 resolve_call('info')
+                resolve_call('info')
             case 'buy' | 'sell':
-                 resolve_call('open_orders', sys.argv[1], sys.argv[2])
+                if len(sys.argv) == 3:
+                    resolve_call('order_limit', sys.argv[1], sys.argv[2])
+                else:
+                    resolve_call('order_now', sys.argv[1])
             case 'active':
                 resolve_call('show_active_positions')
             case 'close':
