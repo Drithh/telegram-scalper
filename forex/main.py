@@ -33,16 +33,16 @@ else:
             case 'info':
                 resolve_call('info')
             case 'buy' | 'sell':
-                if len(sys.argv) == 3:
-                    resolve_call('order_limit', sys.argv[1], sys.argv[2])
+                if len(sys.argv) == 4:
+                    resolve_call('order_limit', sys.argv[1], sys.argv[2], sys.argv[3])
                 else:
-                    resolve_call('order_now', sys.argv[1])
+                    resolve_call('order_now', sys.argv[1], sys.argv[2])
             case 'active':
                 resolve_call('show_active_positions')
             case 'close':
-                resolve_call('close_position', sys.argv[2])
+                resolve_call('close_position', sys.argv[2], sys.argv[3])
             case 'edit':
-                resolve_call('edit_position', sys.argv[2], sys.argv[3])
+                resolve_call('edit_position', sys.argv[2], sys.argv[3], sys.argv[4])
         # order_send();
     else:
         print("failed to connect at account #{}, error code: {}".format(account, mt5.last_error()))

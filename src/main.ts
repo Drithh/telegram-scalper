@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import { Telegram } from './telegram';
 import { Trade } from './trade';
-import 'dotenv/config';
 
 (async () => {
   const trade = new Trade();

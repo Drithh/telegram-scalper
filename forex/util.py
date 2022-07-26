@@ -1,3 +1,4 @@
+from email import message
 import MetaTrader5 as mt5
 import pandas as pd
 import time
@@ -21,89 +22,83 @@ def output_exit(status: str, message):
 
 
 config = dotenv_values(".env")
-symbol = 'XAUUSD'
+
 def resolve_call(call, *args):
     if call=="info":
         output('info', show_info())
     elif call=="order_limit":
-        return order_limit(args[0], args[1])
+        return order_limit(args[0], args[1], args[2])
     elif call=="order_now":
-        return order_now(args[0])
+        return order_now(args[0], args[1])
     elif call=="show_active_positions":
         return show_active_positions()
     elif call=="close_position":
-        return close_position(args[0])
+        return close_position(args[0], args[1])
     elif call=="edit_position":
-        return edit_position(args[0], args[1])
+        return edit_position(args[0], args[1], args[2])
     else:
         mt5.shutdown()
         quit()
 
 def show_info():
-    return mt5.account_info()._asdict()
+    account = mt5.account_info()._asdict()
+    output_exit("success", f"Info for account {account['name']}\n\nBalance: {account['balance']}\nCredit: {account['credit']}\nProfit: {account['profit']}\n\nEquity: {account['equity']}\nMargin: {account['margin']}\nMargin Free: {account['margin_free']}\n\nServer: {account['server']}")
 
 
     
 
 def get_active_positions():
-    positions=mt5.positions_get(symbol=symbol)
-    if positions==None:
-        return["fail", f"No positions on {symbol}, error code={format(mt5.last_error())}"]
+    positions=mt5.positions_get()
+    if not len(positions):
+        return["fail", f"No positions found, error code={format(mt5.last_error())}"]
     elif len(positions)>0:
         list_positions=[]
         for position in positions:
             list_positions.append(position._asdict())
         return["active", list_positions]
-    # shut down connection to the MetaTrader 5 terminal
     mt5.shutdown()
     
 def show_active_positions():
     result = get_active_positions()
-    output_exit(result[0], result[1])
- 
-def close_position(close_amount):
-    active_positions=get_active_positions()
-    if active_positions[0]=="fail":
-        output_exit("fail", 'There is no active position')
-    else:
-        # sort the positions by tp
-        sorted_active_positions = sorted(active_positions[1], key=lambda x: x['tp'])
-        if (close_amount == 'half'):
-            close_amount = len(sorted_active_positions) / 2
-        elif (close_amount == 'all'):
-            close_amount = len(sorted_active_positions)
-        close_amount = int(close_amount)
-        for i in range(close_amount):
-            position = sorted_active_positions[i]
-            lot = float(config['TRADE_VOLUME'])
-            price=mt5.symbol_info_tick(symbol).bid
-            deviation=20
-            request={
-                "action": mt5.TRADE_ACTION_DEAL,
-                "symbol": symbol,
-                "volume": lot,
-                "type": mt5.ORDER_TYPE_BUY if position['type'] == 1 else mt5.ORDER_TYPE_SELL,
-                "position": position['ticket'],
-                "price": price,
-                "deviation": deviation,
-                "magic": 234000,
-                "comment": "python script close",
-                "type_time": mt5.ORDER_TIME_DAY,
-                "type_filling": mt5.ORDER_FILLING_FOK,
-            }
-            result=mt5.order_send(request)
-
-            if result.retcode != mt5.TRADE_RETCODE_DONE:
-                output_exit("fail", f"Close Order failed, retcode={result.retcode}")
+    message_result = []
+    if (result[0] == "active"):
+        for position in result[1]:
+            index = next((i for i, item in enumerate(message_result) if item["symbol"] == position['symbol']), None)
+            if (index == None):
+                message_result.append({
+                    'symbol': position['symbol'],
+                    'volume': position['volume'],
+                    'profit': position['profit'],
+                    'price_current': position['price_current'],
+                    'price_open': [position['price_open']],
+                    'sl': [position['sl']],
+                    'tp': [position['tp']],
+                })
             else:
-                output("success", f"Close Order success, {symbol} {lot} lots at {price} \nProfit: {position['profit']}")
+                message_result[index]['profit'] += position['profit']
+                message_result[index]['price_open'].append(position['price_open'])
+                message_result[index]['sl'].append(position['sl'])
+                message_result[index]['tp'].append(position['tp'])
+        final_message = ""
+        for message in message_result:
+            if (len(final_message) > 0):
+                final_message += '\n\n\n'
+            active_position = len(message['price_open'])
+            final_message += f'There are {active_position} active positions in {message["symbol"]}\nWith {message["volume"]} lots at {message["price_current"]}\nProfit: {message["profit"]}\n\n And the following prices:\n Open: {message["price_open"]}\n SL: {message["sl"]}\n TP: {message["tp"]}'
+            
+        output_exit("success", final_message)
+    else:
+        output_exit(result[0], result[1])
+            
+ 
 
-def order_now(type):
+
+def order_now(type, symbol):
     # prepare the buy request structure
     success = 0
     symbol_info = mt5.symbol_info(symbol)
     if symbol_info is None:
-        output_exit( "fail", symbol+"not found, can not call order_check()" )
+        output_exit( "fail", symbol+" not found, can not call order_check()" )
     
     # if the symbol is unavailable in MarketWatch, add it
     if not symbol_info.visible:
@@ -153,7 +148,7 @@ def order_now(type):
             success += 1
     output("success", f"Successfully placed {success} orders in {symbol} for {price}")
     
-def order_limit(type, max_price):
+def order_limit(type, symbol, max_price):
     success = 0
     # prepare the buy request structure
     symbol_info = mt5.symbol_info(symbol)
@@ -208,9 +203,47 @@ def order_limit(type, max_price):
             success += 1
     output("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
     
+def close_position(symbol, close_amount):
+    active_positions=get_active_positions()
+    if active_positions[0]=="fail":
+        output_exit("fail", 'There is no active position')
+    else:
+        # sort the positions by tp
+        symbol_active_positions =  [d for d in active_positions[1] if d['symbol'] in symbol]
+        sorted_active_positions = sorted(symbol_active_positions, key=lambda x: x['tp'])
+        if (close_amount == 'half'):
+            close_amount = len(sorted_active_positions) / 2
+        elif (close_amount == 'all'):
+            close_amount = len(sorted_active_positions)
+        close_amount = int(close_amount)
+        profit = 0
+        for i in range(close_amount):
+            position = sorted_active_positions[i]
+            lot = float(config['TRADE_VOLUME'])
+            price=mt5.symbol_info_tick(symbol).bid
+            deviation=20
+            request={
+                "action": mt5.TRADE_ACTION_DEAL,
+                "symbol": symbol,
+                "volume": lot,
+                "type": mt5.ORDER_TYPE_BUY if position['type'] == 1 else mt5.ORDER_TYPE_SELL,
+                "position": position['ticket'],
+                "price": price,
+                "deviation": deviation,
+                "magic": 234000,
+                "comment": "python script close",
+                "type_time": mt5.ORDER_TIME_DAY,
+                "type_filling": mt5.ORDER_FILLING_FOK,
+            }
+            result=mt5.order_send(request)
 
+            if result.retcode != mt5.TRADE_RETCODE_DONE:
+                output_exit("fail", f"Close Order failed, retcode={result.retcode}")
+            else:
+                profit += position['profit']
+        output_exit("success", f"Close {close_amount} Order success, {symbol} {lot} lots at {price} \nProfit: {position['profit']}")
 
-def edit_position(key, value):
+def edit_position(symbol, key, value):
     active_positions=get_active_positions()
     if active_positions[0]=="fail":
         output_exit("fail", 'There is no active position')

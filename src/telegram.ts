@@ -1,11 +1,11 @@
-import { Api, TelegramClient } from 'telegram';
-import { StringSession } from 'telegram/sessions';
-import input from 'input';
 import 'dotenv/config';
-import { writeEnvToFile } from './util/env';
-import { NewMessage, NewMessageEvent } from 'telegram/events/NewMessage';
-import channels from './channels.json';
 import events from 'events';
+import input from 'input';
+import { Api, TelegramClient } from 'telegram';
+import { NewMessage, NewMessageEvent } from 'telegram/events/NewMessage';
+import { StringSession } from 'telegram/sessions';
+import channels from './channels.json';
+import { writeEnvToFile } from './util/env';
 interface TradeOptions {
   isBuy: boolean;
   min: number;
@@ -99,20 +99,23 @@ export class Telegram {
       case message.match('/buy') ? message : undefined:
         {
           const arg = message.match('/buy (.*)');
-          if (!arg || arg[1].split(' ').length !== 1) {
-            this.sendMessage('Invalid arguments\n/buy <max_price>');
+          if (!arg || arg[1].split(' ').length !== 2) {
+            this.sendMessage('Invalid arguments\n/buy <symbol> <max_price>');
           } else {
+            const args = arg[1].split(' ');
             if (
-              (!isNaN(parseFloat(arg[1])) && !isNaN(parseInt(arg[1]))) ||
-              arg[1] === 'now'
+              (!isNaN(parseFloat(args[1])) && !isNaN(parseInt(args[1]))) ||
+              args[1] === 'now'
             ) {
-              if (arg[1] === 'now') {
-                this.event.emit('message', ['buy']);
+              if (args[1] === 'now') {
+                this.event.emit('message', ['buy', args[0]]);
               } else {
-                this.event.emit('message', ['buy', arg[1]]);
+                this.event.emit('message', ['buy', args[0], args[1]]);
               }
             } else {
-              this.sendMessage('Invalid arguments\narguments must be numbers');
+              this.sendMessage(
+                'Invalid arguments\narguments must be string symbol and numbers',
+              );
             }
           }
         }
@@ -120,28 +123,37 @@ export class Telegram {
       case message.match('/sell') ? message : undefined:
         {
           const arg = message.match('/sell (.*)');
-          if (!arg || arg[1].split(' ').length !== 1) {
-            this.sendMessage('Invalid arguments\n/sell <max_price>');
-          } else {
-            if (!isNaN(parseFloat(arg[1])) && !isNaN(parseInt(arg[1]))) {
-              this.event.emit('message', ['sell', arg[1]]);
+          if (!arg || arg[1].split(' ').length !== 2) {
+            this.sendMessage('Invalid arguments\n/sell <symbol> <max_price>');
+          }
+          const args = arg[1].split(' ');
+          if (
+            (!isNaN(parseFloat(args[1])) && !isNaN(parseInt(args[1]))) ||
+            args[1] === 'now'
+          ) {
+            if (args[1] === 'now') {
+              this.event.emit('message', ['sell', args[0]]);
             } else {
-              this.sendMessage('Invalid arguments\narguments must be numbers');
+              this.event.emit('message', ['sell', args[0], args[1]]);
             }
+          } else {
+            this.sendMessage(
+              'Invalid arguments\narguments must be string symbol and numbers',
+            );
           }
         }
         break;
       case message.match('/close') ? message : undefined:
         {
           const arg = message.match('/close (.*)');
-          if (!arg || arg[1].split(' ').length !== 1) {
-            this.sendMessage('Invalid arguments\n/close <amount>');
+          if (!arg || arg[1].split(' ').length !== 2) {
+            this.sendMessage('Invalid arguments\n/close <symbol> <amount>');
           } else {
             const args = arg[1].split(' ');
             if (
-              !isNaN(parseInt(args[0])) ||
-              args[0] === 'all' ||
-              args[0] === 'half'
+              !isNaN(parseInt(args[1])) ||
+              args[1] === 'all' ||
+              args[1] === 'half'
             ) {
               const closeMessage = ['close'].concat(arg[1].split(' '));
               this.event.emit('message', closeMessage);
@@ -208,7 +220,7 @@ export class Telegram {
 
       case '/help':
         this.sendMessage(
-          `Command List:\n/info\n - Show info about your account\n\n/buy <amount> <max_price> <tp> <sl>\n - Buy amount of currency at maxprice with tp and sl\n/sell <amount> <max_price> <tp> <sl>\n - Sell amount of currency at maxprice with tp and sl\n\n/close <amount>\n - Close all open trades\n/close all\n - Close all open trades\n/close half\n - Close half of open trades\n\n/active\n - Show active trades\n\n/edit <id> <amount> <max_price> <tp> <sl>\n - Edit trade with id\n\n/config <key> <value>\n - Set config value\n\tAvailable keys:\n\t- trade_amount\n\t- trade_volume\n/config\n - Show config values\n\n/help\n - Show this help message`,
+          'Available commands:\n/info\n/buy <symbol> <max_price | now>\n/sell <symbol> <max_price | now>\n/close <symbol> <amount | half | all>\n/active\n/edit <be | sl | tp> <pip>\n/config <key> <value>\n/help',
         );
         break;
       default:

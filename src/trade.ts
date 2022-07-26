@@ -1,6 +1,5 @@
-import { ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
-import { messageParser } from './util/message-parser';
 import events from 'events';
+import { ChildProcessWithoutNullStreams, spawn } from 'node:child_process';
 
 interface Result {
   status: string;
@@ -21,10 +20,6 @@ export class Trade {
   receive(data: { toString: () => string }) {
     const result: Result = JSON.parse(data.toString());
     console.log(result);
-    if (typeof result.message === 'string') {
-      this.event.emit('message', result.message);
-    } else {
-      this.event.emit('message', messageParser(result));
-    }
+    this.event.emit('message', result.message);
   }
 }
