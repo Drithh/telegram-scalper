@@ -245,7 +245,7 @@ def close_position(symbol, close_amount):
                 output_exit("fail", f"Close Order failed, message={result.comment}")
             else:
                 profit += position['profit']
-        output_exit("success", f"Close {close_amount} Order success, {symbol} {lot} lots at {price} \nProfit: {position['profit']}")
+        output_exit("success", f"Close {close_amount} Order success, {symbol} {lot} lots at {price} \nProfit: {profit}")
 
 def edit_position(symbol, key, value):
     active_positions=get_active_positions()

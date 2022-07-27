@@ -72,7 +72,8 @@ export class Telegram {
           upperCaseMessage.includes('BUY') || upperCaseMessage.includes('SELL');
         if (isOrder) {
           const isBuy = upperCaseMessage.includes('BUY') ? true : false;
-          const regexPrice = [/([0-9.]+ *- *[0-9.]+)/g, /@ *([0-9.]+)/g];
+          const upperCaseMessages = upperCaseMessage.split('\n');
+          const regexPrice = [/([0-9.]+ *- *[0-9.]+)/g, /([0-9.]+)/g];
           const resolvePrice = (price: string) => {
             if (price.includes('-')) {
               const [min, max] = price.split('-');
@@ -81,33 +82,32 @@ export class Telegram {
               return parseFloat(price);
             }
           };
-          const getPrice = (message: string) => {
-            for (const regex of regexPrice) {
-              const match = regex.exec(message);
-              if (match) {
-                return resolvePrice(match[1]).toFixed(3);
+          const getPrice = (messages: string[]) => {
+            for (const message of messages) {
+              if (!message.match(/TAKE|TP|SL|STOP/g)) {
+                for (const regex of regexPrice) {
+                  const match = regex.exec(message);
+                  if (match) {
+                    return resolvePrice(match[1]);
+                  }
+                }
               }
             }
             return null;
           };
-          const price = getPrice(upperCaseMessage);
-          const regexSymbol = [/(GOLD)/g, /([A-Z]{6})/g];
+          const price = getPrice(upperCaseMessages);
           const getSymbol = (message: string) => {
-            for (const regex of regexSymbol) {
-              const match = regex.exec(message);
-              if (match) {
-                console.log(match[1]);
-                if (match[1] === 'GOLD') {
-                  return 'XAUUSD';
-                }
-                return match[1];
-              }
+            const symbol = config.symbols.find((s) => message.includes(s));
+            if (symbol === 'GOLD') {
+              return 'XAUUSD';
+            } else {
+              return symbol;
             }
-            return null;
           };
           const symbol = getSymbol(upperCaseMessage);
-          console.log(symbol, price);
           if (price && symbol) {
+            console.log(symbol, price);
+
             const order = {
               isBuy,
               price,

@@ -1,5 +1,6 @@
 {
   "symbols": [
+    "GOLD",
     "EURUSD",
     "GBPUSD",
     "USDJPY",
@@ -95,6 +96,11 @@
     {
       "name": "Forex_scalpingsignal",
       "defaultTP": "150",
+      "defaultSL": "500"
+    },
+    {
+      "name": "alienmvfx",
+      "defaultTP": "200",
       "defaultSL": "500"
     }
   ]
