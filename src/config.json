@@ -84,24 +84,25 @@
   ],
   "channels": [
     {
-      "name": "scalpingtermudah30PIPS",
-      "defaultTP": "200",
-      "defaultSL": "500"
+      "name": "scalpingtermudah30PIPS"
     },
     {
-      "name": "testdrith",
-      "defaultTP": "150",
-      "defaultSL": "500"
+      "name": "testdrith"
     },
     {
-      "name": "Forex_scalpingsignal",
-      "defaultTP": "150",
-      "defaultSL": "500"
+      "name": "Forex_scalpingsignal"
     },
     {
-      "name": "alienmvfx",
-      "defaultTP": "200",
-      "defaultSL": "500"
+      "name": "GoldSignalsDaily"
+    },
+    {
+      "name": "BTCUSD_SIGNALS1"
+    },
+    {
+      "name": "Forex_Signals_4x"
+    },
+    {
+      "name": "alienmvfx"
     }
   ]
 }

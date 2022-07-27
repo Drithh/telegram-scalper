@@ -122,7 +122,7 @@ def order_now(type, symbol):
                 "type": mt5.ORDER_TYPE_BUY,
                 "price": price,
                 "sl": price - 500 * point,
-                "tp": price + 100 * point,
+                "tp": price + 120 * point,
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script open",
@@ -137,7 +137,7 @@ def order_now(type, symbol):
                 "type": mt5.ORDER_TYPE_SELL,
                 "price": price,
                 "sl": price + 500 * point,
-                "tp": price - 100 * point,
+                "tp": price - 120 * point,
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script open",
@@ -150,7 +150,7 @@ def order_now(type, symbol):
             output_exit("fail", f"Order failed, message={result.comment}")
         else:
             success += 1
-    output("success", f"Successfully placed {success} orders in {symbol} for {price}")
+    output_exit("success", f"Successfully placed {success} orders in {symbol} for {price}")
     
 def order_limit(type, symbol, max_price):
     success = 0
@@ -163,6 +163,10 @@ def order_limit(type, symbol, max_price):
     if not symbol_info.visible:
         if not mt5.symbol_select(symbol,True):
             output_exit( "fail", f"symbol_select {symbol} failed, exit")
+    current_price = mt5.symbol_info_tick(symbol).ask
+    if ((type == "buy" and current_price <= float(max_price)) or (type == "sell" and current_price >= max_price)):
+        output("success", f'{symbol} current price is {current_price} and max price is {max_price}\nPlacing order now')
+        order_now(type, symbol)
     for i in range(int(config["TRADE_AMOUNT"])):
         lot = float(config['TRADE_VOLUME'])
         point = mt5.symbol_info(symbol).point
@@ -177,7 +181,7 @@ def order_limit(type, symbol, max_price):
                 "type": mt5.ORDER_TYPE_BUY_LIMIT,
                 "price": price,
                 "sl": price - 500 * point,
-                "tp": price + 100 * point,
+                "tp": price + 120 * point,
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script open",
@@ -193,7 +197,7 @@ def order_limit(type, symbol, max_price):
                 "type": mt5.ORDER_TYPE_SELL_LIMIT,
                 "price": float(max_price),
                 "sl": price + 500 * point,
-                "tp": price - 100 * point,
+                "tp": price - 120 * point,
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script open",
@@ -207,7 +211,7 @@ def order_limit(type, symbol, max_price):
             output_exit("fail", f"Order failed, message={result.comment}")
         else:
             success += 1
-    output("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
+    output_exit("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
     
 def close_position(symbol, close_amount):
     active_positions=get_active_positions()
