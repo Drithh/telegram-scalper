@@ -1,6 +1,4 @@
-from email import message
 import MetaTrader5 as mt5
-import pandas as pd
 import time
 import sys
 import json
@@ -19,6 +17,12 @@ def output_exit(status: str, message):
     output(status, message)
     mt5.shutdown()
     quit()
+    
+def expiration_time():
+    import datetime as dt
+    expire = dt.datetime.now() + dt.timedelta(hours=3, minutes=30)
+    timestamp = int(expire.timestamp())
+    return timestamp
 
 
 config = dotenv_values(".env")
@@ -118,7 +122,7 @@ def order_now(type, symbol):
                 "type": mt5.ORDER_TYPE_BUY,
                 "price": price,
                 "sl": price - 500 * point,
-                "tp": price + 300 * point,
+                "tp": price + 100 * point,
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script open",
@@ -133,7 +137,7 @@ def order_now(type, symbol):
                 "type": mt5.ORDER_TYPE_SELL,
                 "price": price,
                 "sl": price + 500 * point,
-                "tp": price - 300 * point,
+                "tp": price - 100 * point,
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script open",
@@ -143,7 +147,7 @@ def order_now(type, symbol):
         
         result = mt5.order_send(request)
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            output_exit("fail", f"Order failed, retcode={result.retcode}")
+            output_exit("fail", f"Order failed, message={result.comment}")
         else:
             success += 1
     output("success", f"Successfully placed {success} orders in {symbol} for {price}")
@@ -153,7 +157,7 @@ def order_limit(type, symbol, max_price):
     # prepare the buy request structure
     symbol_info = mt5.symbol_info(symbol)
     if symbol_info is None:
-        output_exit( "fail", symbol+"not found, can not call order_check()" )
+        output_exit( "fail", symbol+" not found, can not call order_check()" )
     
     # if the symbol is unavailable in MarketWatch, add it
     if not symbol_info.visible:
@@ -173,12 +177,13 @@ def order_limit(type, symbol, max_price):
                 "type": mt5.ORDER_TYPE_BUY_LIMIT,
                 "price": price,
                 "sl": price - 500 * point,
-                "tp": price + 300 * point,
+                "tp": price + 100 * point,
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script open",
-                "type_time": mt5.ORDER_TIME_DAY,
+                "type_time": mt5.ORDER_TIME_SPECIFIED,
                 "type_filling": mt5.ORDER_FILLING_FOK,
+                "expiration": expiration_time()
             }
         else:
             request = {
@@ -188,17 +193,18 @@ def order_limit(type, symbol, max_price):
                 "type": mt5.ORDER_TYPE_SELL_LIMIT,
                 "price": float(max_price),
                 "sl": price + 500 * point,
-                "tp": price - 300 * point,
+                "tp": price - 100 * point,
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script open",
-                "type_time": mt5.ORDER_TIME_DAY,
+                "type_time": mt5.ORDER_TIME_SPECIFIED,
                 "type_filling": mt5.ORDER_FILLING_FOK,
+                "expiration": expiration_time()
             }
         
         result = mt5.order_send(request)
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            output_exit("fail", f"Order failed, retcode={result.retcode}")
+            output_exit("fail", f"Order failed, message={result.comment}")
         else:
             success += 1
     output("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
@@ -232,13 +238,11 @@ def close_position(symbol, close_amount):
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script close",
-                "type_time": mt5.ORDER_TIME_DAY,
-                "type_filling": mt5.ORDER_FILLING_FOK,
             }
             result=mt5.order_send(request)
 
             if result.retcode != mt5.TRADE_RETCODE_DONE:
-                output_exit("fail", f"Close Order failed, retcode={result.retcode}")
+                output_exit("fail", f"Close Order failed, message={result.comment}")
             else:
                 profit += position['profit']
         output_exit("success", f"Close {close_amount} Order success, {symbol} {lot} lots at {price} \nProfit: {position['profit']}")
@@ -280,12 +284,10 @@ def edit_position(symbol, key, value):
                 "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script close",
-                "type_time": mt5.ORDER_TIME_GTC,
-                "type_filling": mt5.ORDER_FILLING_FOK,
             }
             result=mt5.order_send(request)
             if result.retcode != mt5.TRADE_RETCODE_DONE:
-                output_exit("fail", f"Edit Order failed, retcode={result.retcode}")
+                output_exit("fail", f"Edit Order failed, message={result.comment}")
             # else:
                 # output("success", f"Edit Order success, {symbol} {lot} lots at {position['price_open']} \n{key}: {value}")
         output("success", f"Edit {len(active_positions[1])} Order success, {'subtract' if isReduce else 'add'} {abs(value)} pip to {key}")

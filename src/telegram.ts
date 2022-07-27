@@ -4,17 +4,17 @@ import input from 'input';
 import { Api, TelegramClient } from 'telegram';
 import { NewMessage, NewMessageEvent } from 'telegram/events/NewMessage';
 import { StringSession } from 'telegram/sessions';
-import channels from './channels.json';
+import config from './config.json';
 import { writeEnvToFile } from './util/env';
-interface TradeOptions {
-  isBuy: boolean;
-  min: number;
-  max: number;
-  tp1: number;
-  tp2: number;
-  tp3: number;
-  sl: number;
-}
+// interface TradeOptions {
+//   isBuy: boolean;
+//   min: number;
+//   max: number;
+//   tp1: number;
+//   tp2: number;
+//   tp3: number;
+//   sl: number;
+// }
 
 export class Telegram {
   constructor() {
@@ -25,7 +25,7 @@ export class Telegram {
       parseInt(process.env.API_ID ? process.env.API_ID : '0'),
       process.env.API_HASH ? process.env.API_HASH : '',
       {
-        connectionRetries: 5,
+        connectionRetries: 100,
       },
     );
     this.start();
@@ -35,20 +35,22 @@ export class Telegram {
   public event = new events.EventEmitter();
 
   async start(): Promise<void> {
-    await this.client.start({
-      phoneNumber: async () => {
-        return process.env.PHONE_NUMBER
-          ? process.env.PHONE_NUMBER
-          : await input.text('Please enter your number: ');
-      },
-      password: async () => await input.text('Please enter your password: '),
-      phoneCode: async () =>
-        await input.text('Please enter the code you received: '),
-      onError: (err) => console.log(err),
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const stringSession: any = this.client.session.save();
-    writeEnvToFile([{ key: 'STRING_SESSION', value: stringSession }]);
+    if (!process.env.STRING_SESSION) {
+      await this.client.start({
+        phoneNumber: async () => {
+          return process.env.PHONE_NUMBER
+            ? process.env.PHONE_NUMBER
+            : await input.text('Please enter your number: ');
+        },
+        password: async () => await input.text('Please enter your password: '),
+        phoneCode: async () =>
+          await input.text('Please enter the code you received: '),
+        onError: (err) => console.log(err),
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stringSession: any = this.client.session.save();
+      writeEnvToFile([{ key: 'STRING_SESSION', value: stringSession }]);
+    }
     await this.client.connect();
     this.client.addEventHandler(this.eventPrint.bind(this), new NewMessage({}));
   }
@@ -61,20 +63,69 @@ export class Telegram {
         this.resolveMessage(message);
       }
     } else if (sender.className === 'Channel') {
-      const activeChannel = channels.find((c) => c.name === sender.username);
+      const upperCaseMessage = message.toUpperCase();
+      const activeChannel = config.channels.find(
+        (c) => c.name === sender.username,
+      );
       if (activeChannel) {
-        const matches = RegExp(activeChannel.regex).exec(message);
-        if (matches && matches.length === 7) {
-          const options: TradeOptions = {
-            isBuy: message.toLowerCase().includes('buy'),
-            min: parseFloat(matches[1]),
-            max: parseFloat(matches[2]),
-            tp1: parseFloat(matches[3]),
-            tp2: parseFloat(matches[4]),
-            tp3: parseFloat(matches[5]),
-            sl: parseFloat(matches[6]),
+        const isOrder =
+          upperCaseMessage.includes('BUY') || upperCaseMessage.includes('SELL');
+        if (isOrder) {
+          const isBuy = upperCaseMessage.includes('BUY') ? true : false;
+          const regexPrice = [/([0-9.]+ *- *[0-9.]+)/g, /@ *([0-9.]+)/g];
+          const resolvePrice = (price: string) => {
+            if (price.includes('-')) {
+              const [min, max] = price.split('-');
+              return (parseFloat(min) + parseFloat(max)) / 2;
+            } else {
+              return parseFloat(price);
+            }
           };
-          console.log(options);
+          const getPrice = (message: string) => {
+            for (const regex of regexPrice) {
+              const match = regex.exec(message);
+              if (match) {
+                return resolvePrice(match[1]).toFixed(3);
+              }
+            }
+            return null;
+          };
+          const price = getPrice(upperCaseMessage);
+          const regexSymbol = [/(GOLD)/g, /([A-Z]{6})/g];
+          const getSymbol = (message: string) => {
+            for (const regex of regexSymbol) {
+              const match = regex.exec(message);
+              if (match) {
+                console.log(match[1]);
+                if (match[1] === 'GOLD') {
+                  return 'XAUUSD';
+                }
+                return match[1];
+              }
+            }
+            return null;
+          };
+          const symbol = getSymbol(upperCaseMessage);
+          console.log(symbol, price);
+          if (price && symbol) {
+            const order = {
+              isBuy,
+              price,
+              symbol,
+            };
+            this.sendMessage(
+              `Found Signal from ${sender.username}\nPlacing ${
+                process.env.TRADE_AMOUNT
+              } orders to ${order.isBuy ? 'Buy' : 'Sell'} ${order.symbol} at ${
+                order.price
+              }`,
+            );
+            this.event.emit('message', [
+              order.isBuy ? 'buy' : 'sell',
+              order.symbol,
+              order.price,
+            ]);
+          }
         }
       }
     }
@@ -171,14 +222,15 @@ export class Telegram {
       case message.match('/edit') ? message : undefined:
         {
           const arg = message.match('/edit (.*)');
-          if (!arg || arg[1].split(' ').length !== 2) {
-            this.sendMessage('Invalid arguments\n/edit <options> <pip>');
+          if (!arg || arg[1].split(' ').length !== 3) {
+            this.sendMessage(
+              'Invalid arguments\n/edit <symbol> <options> <pip>',
+            );
           } else {
             const args = arg[1].split(' ');
             if (
-              (!isNaN(parseInt(args[1])) && args[0] === 'tp') ||
-              args[0] === 'sl' ||
-              args[0] === 'be'
+              !isNaN(parseInt(args[2])) &&
+              (args[1] === 'tp' || args[1] === 'sl' || args[1] === 'be')
             ) {
               const editMessage = ['edit'].concat(arg[1].split(' '));
               this.event.emit('message', editMessage);
