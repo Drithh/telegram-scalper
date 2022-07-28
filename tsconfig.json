@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "Node16",
     "resolveJsonModule": true,
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "esModuleInterop": true,
     "moduleResolution": "Node16",
     "rootDir": ".",
