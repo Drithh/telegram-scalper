@@ -157,7 +157,6 @@ def order_now(type, symbol):
 def order_limit(type, symbol, max_price):
     success = 0
     # prepare the buy request structure
-    max_price = float(max_price)
     symbol_info = mt5.symbol_info(symbol)
     if symbol_info is None:
         output_exit( "fail", symbol+" not found, can not call order_check()" )
@@ -170,6 +169,7 @@ def order_limit(type, symbol, max_price):
     bid_price = current_price.bid
     ask_price = current_price.ask
     point = mt5.symbol_info(symbol).point
+    max_price = float(max_price) + ((point * 200) if type == 0 else (point * -200))
 
     if ((type == "buy" and ask_price <= max_price)):
         output("success", f'{symbol} current price is {ask_price} and bid price is {max_price}\nPlacing order now')
@@ -179,10 +179,10 @@ def order_limit(type, symbol, max_price):
         order_now(type, symbol)
         
     if (type == "buy" and abs(ask_price - max_price) / point > 200):
-        output("success", f'{symbol} current price is {ask_price} and ask price is {max_price}\nImposibble to order limit\nPlacing order now')
+        output("success", f'{symbol} current price is {ask_price} and ask price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point} pip)\nPlacing order now')
         order_now(type, symbol)
     elif (type == "sell" and abs(bid_price - max_price) / point > 200):
-        output("success", f'{symbol} current price is {bid_price} and bid price is {max_price}\nImposibble to order limit\nPlacing order now')
+        output("success", f'{symbol} current price is {bid_price} and bid price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point} pip)\nPlacing order now')
         order_now(type, symbol)
         
     if (abs(ask_price - max_price) > 5):
