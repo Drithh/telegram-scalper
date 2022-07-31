@@ -29,11 +29,11 @@ export class Telegram {
       },
     );
     this.start();
-    this.messageSender();
+    // this.messageSender();
   }
 
   private client: TelegramClient;
-  private messages: string[] = [];
+  // private messages: string[] = [];
   public event = new events.EventEmitter();
 
   async start(): Promise<void> {
@@ -57,17 +57,17 @@ export class Telegram {
     this.client.addEventHandler(this.eventPrint.bind(this), new NewMessage({}));
   }
 
-  public queueMessage(message: string) {
-    this.messages.push(message);
-  }
+  // public sendMessage(message: string) {
+  //   this.messages.push(message);
+  // }
 
-  private messageSender() {
-    setInterval(() => {
-      if (this.messages.length > 0) {
-        this.sendMessage(this.messages.shift());
-      }
-    }, 2000);
-  }
+  // private messageSender() {
+  //   setInterval(() => {
+  //     if (this.messages.length > 0) {
+  //       this.sendMessage(this.messages.shift());
+  //     }
+  //   }, 2000);
+  // }
 
   async eventPrint(event: NewMessageEvent) {
     const message = event.message.message;
@@ -127,7 +127,7 @@ export class Telegram {
               price,
               symbol,
             };
-            this.queueMessage(
+            this.sendMessage(
               `Found Signal from ${sender.username}\nPlacing ${
                 process.env.TRADE_AMOUNT
               } orders to ${order.isBuy ? 'Buy' : 'Sell'} ${order.symbol} at ${
@@ -165,7 +165,7 @@ export class Telegram {
         {
           const arg = message.match('/buy (.*)');
           if (!arg || arg[1].split(' ').length !== 2) {
-            this.queueMessage('Invalid arguments\n/buy <symbol> <max_price>');
+            this.sendMessage('Invalid arguments\n/buy <symbol> <max_price>');
           } else {
             const args = arg[1].split(' ');
             if (
@@ -178,7 +178,7 @@ export class Telegram {
                 this.event.emit('message', ['buy', args[0], args[1]]);
               }
             } else {
-              this.queueMessage(
+              this.sendMessage(
                 'Invalid arguments\narguments must be string symbol and numbers',
               );
             }
@@ -189,7 +189,7 @@ export class Telegram {
         {
           const arg = message.match('/sell (.*)');
           if (!arg || arg[1].split(' ').length !== 2) {
-            this.queueMessage('Invalid arguments\n/sell <symbol> <max_price>');
+            this.sendMessage('Invalid arguments\n/sell <symbol> <max_price>');
           }
           const args = arg[1].split(' ');
           if (
@@ -202,7 +202,7 @@ export class Telegram {
               this.event.emit('message', ['sell', args[0], args[1]]);
             }
           } else {
-            this.queueMessage(
+            this.sendMessage(
               'Invalid arguments\narguments must be string symbol and numbers',
             );
           }
@@ -212,7 +212,7 @@ export class Telegram {
         {
           const arg = message.match('/close (.*)');
           if (!arg || arg[1].split(' ').length !== 2) {
-            this.queueMessage('Invalid arguments\n/close <symbol> <amount>');
+            this.sendMessage('Invalid arguments\n/close <symbol> <amount>');
           } else {
             const args = arg[1].split(' ');
             if (
@@ -223,7 +223,7 @@ export class Telegram {
               const closeMessage = ['close'].concat(arg[1].split(' '));
               this.event.emit('message', closeMessage);
             } else {
-              this.queueMessage(
+              this.sendMessage(
                 'Invalid arguments\narguments must be numbers or half or all',
               );
             }
@@ -237,7 +237,7 @@ export class Telegram {
         {
           const arg = message.match('/edit (.*)');
           if (!arg || arg[1].split(' ').length !== 3) {
-            this.queueMessage(
+            this.sendMessage(
               'Invalid arguments\n/edit <symbol> <options> <pip>',
             );
           } else {
@@ -249,7 +249,7 @@ export class Telegram {
               const editMessage = ['edit'].concat(arg[1].split(' '));
               this.event.emit('message', editMessage);
             } else {
-              this.queueMessage('Invalid arguments\narguments must be numbers');
+              this.sendMessage('Invalid arguments\narguments must be numbers');
             }
           }
         }
@@ -258,11 +258,11 @@ export class Telegram {
         {
           const arg = message.match('/config (.*)');
           if (!arg) {
-            this.queueMessage(
+            this.sendMessage(
               `Current config:\nTrade Amount: ${process.env.TRADE_AMOUNT}\nTrade Volume: ${process.env.TRADE_VOLUME}`,
             );
           } else if (arg[1].split(' ').length !== 2) {
-            this.queueMessage('Invalid arguments\n/config <key> <value>');
+            this.sendMessage('Invalid arguments\n/config <key> <value>');
           } else {
             const args = arg[1].split(' ');
             if (
@@ -273,24 +273,24 @@ export class Telegram {
                 writeEnvToFile([
                   { key: args[0].toUpperCase(), value: args[1] },
                 ]);
-                this.queueMessage(`${args[0]} set to ${args[1]}`);
+                this.sendMessage(`${args[0]} set to ${args[1]}`);
               } else {
-                this.queueMessage('Invalid value\nvalue must be a number');
+                this.sendMessage('Invalid value\nvalue must be a number');
               }
             } else {
-              this.queueMessage('Invalid key');
+              this.sendMessage('Invalid key');
             }
           }
         }
         break;
 
       case '/help':
-        this.queueMessage(
+        this.sendMessage(
           'Available commands:\n/info\n/buy <symbol> <max_price | now>\n/sell <symbol> <max_price | now>\n/close <symbol> <amount | half | all>\n/active\n/edit <be | sl | tp> <pip>\n/config <key> <value>\n/help',
         );
         break;
       default:
-        this.queueMessage('command not found\nsend /help for help');
+        this.sendMessage('command not found\nsend /help for help');
         break;
     }
   };

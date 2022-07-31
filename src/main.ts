@@ -7,7 +7,7 @@ import { Trade } from './trade';
   const telegram = new Telegram();
 
   trade.event.on('message', (message) => {
-    telegram.queueMessage(message);
+    telegram.sendMessage(message);
   });
   telegram.event.on('message', (event: string[]) => {
     trade.call(event);
