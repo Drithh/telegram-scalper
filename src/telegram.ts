@@ -77,7 +77,10 @@ export class Telegram {
         this.resolveMessage(message);
       }
     } else if (sender.className === 'Channel') {
-      const upperCaseMessage = message.toUpperCase().replace(/[/]/gi, '');
+      const upperCaseMessage = message
+        .toUpperCase()
+        .replaceAll(/[/]/gi, '')
+        .replaceAll(/[,]/gi, '.');
       const activeChannel = config.channels.find(
         (c) => c.name === sender.username,
       );

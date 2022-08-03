@@ -178,16 +178,16 @@ def order_limit(type, symbol, max_price, tp, sl):
 
     if ((type == "buy" and ask_price <= max_price)):
         output("success", f'{symbol} current price is {ask_price} and bid price is {max_price}\nPlacing order now')
-        order_now(type, symbol)
+        order_now(type, symbol, tp, sl)
     elif ( (type == "sell" and bid_price >= max_price)):
         output("success", f'{symbol} current price is {bid_price} and ask price is {max_price}\nPlacing order now')
-        order_now(type, symbol)
+        order_now(type, symbol, tp, sl)
         
-    if (type == "buy" and abs(ask_price - max_price) / point < 200):
-        output("success", f'{symbol} current price is {ask_price} and ask price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point} pip)\nPlacing order now')
+    if (type == "buy" and abs(ask_price - max_price) / point > 50):
+        output("success", f'{symbol} current price is {ask_price} and ask price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point/ 10} pip)\nPlacing order now')
         order_now(type, symbol)
-    elif (type == "sell" and abs(bid_price - max_price) / point < 200):
-        output("success", f'{symbol} current price is {bid_price} and bid price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point} pip)\nPlacing order now')
+    elif (type == "sell" and abs(bid_price - max_price) / point > 50):
+        output("success", f'{symbol} current price is {bid_price} and bid price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point / 10} pip)\nPlacing order now')
         order_now(type, symbol)
         
     if (abs(ask_price - max_price) * point > 5000):
