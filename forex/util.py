@@ -33,20 +33,9 @@ def resolve_call(call, *args):
     if call=="info":
         output('info', show_info())
     elif call=="order_limit":
-        tp = -1 
-        sl = -1
-        if (len(args) == 5):
-            tp = float(args[3])
-            sl = float(args[4])
-
-        return order_limit(args[0], args[1], args[2], tp, sl)
+        return order_limit(args[0], args[1], args[2], args[3], args[4])
     elif call=="order_now":
-        tp = -1 
-        sl = -1
-        if (len(args) == 5):
-            tp = float(args[2])
-            sl = float(args[3])
-        return order_now(args[0], args[1], tp, sl)
+        return order_now(args[0], args[1], args[2], args[3])
     elif call=="show_active_positions":
         return show_active_positions()
     elif call=="close_position":
@@ -125,6 +114,8 @@ def order_now(type, symbol, tp, sl):
         lot = float(config['TRADE_VOLUME'])
         price = mt5.symbol_info(symbol)
         point = price.point
+        ask_price = price.ask
+        bid_price = price.bid
         if (tp == -1):
             if (type == "buy"):
                 tp = ask_price + tp_point * point
@@ -132,15 +123,14 @@ def order_now(type, symbol, tp, sl):
             else:
                 tp = bid_price - tp_point * point
                 sl = bid_price + sl_point * point
-        ask_price = price.ask
-        bid_price = price.bid
+
         deviation = 20
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
             "volume": lot,
             "type": mt5.ORDER_TYPE_BUY if type == 'buy' else mt5.ORDER_TYPE_SELL,
-            "price": ask_price,
+            "price": ask_price if type == 'buy' else bid_price,
             "sl": sl,
             "tp": tp,
             "deviation": deviation,
@@ -171,7 +161,7 @@ def order_limit(type, symbol, max_price, tp, sl):
     bid_price = current_price.bid
     ask_price = current_price.ask
     point = mt5.symbol_info(symbol).point
-    max_price = float(max_price) + ((point * 20) if type == 0 else (point * -20))
+    max_price = float(max_price)
     if (tp == -1):
         sl = max_price + sl_point * point * -1 if type == 'buy' else 1
         tp = max_price + tp_point * point * 1 if type == 'buy' else 1
@@ -183,12 +173,12 @@ def order_limit(type, symbol, max_price, tp, sl):
         output("success", f'{symbol} current price is {bid_price} and ask price is {max_price}\nPlacing order now')
         order_now(type, symbol, tp, sl)
         
-    if (type == "buy" and abs(ask_price - max_price) / point > 50):
+    if (type == "buy" and abs(ask_price - max_price) / point < 50):
         output("success", f'{symbol} current price is {ask_price} and ask price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point/ 10} pip)\nPlacing order now')
-        order_now(type, symbol)
-    elif (type == "sell" and abs(bid_price - max_price) / point > 50):
+        order_now(type, symbol, tp, sl)
+    elif (type == "sell" and abs(bid_price - max_price) / point < 50):
         output("success", f'{symbol} current price is {bid_price} and bid price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point / 10} pip)\nPlacing order now')
-        order_now(type, symbol)
+        order_now(type, symbol, tp, sl)
         
     if (abs(ask_price - max_price) * point > 5000):
         output_exit("success", f'Imposibble To Order\n{symbol} current price is {ask_price} and ask price is {max_price}')

@@ -33,10 +33,16 @@ else:
             case 'info':
                 resolve_call('info')
             case 'buy' | 'sell':
-                if len(sys.argv) == 6:
-                    resolve_call('order_limit', sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5])
+                tp = -1 
+                sl = -1
+                length = len(sys.argv)
+                if (length >= 5):
+                    tp = float(sys.argv[length - 2])
+                    sl = float(sys.argv[length - 1])
+                if length == 6:
+                    resolve_call('order_limit', sys.argv[1], sys.argv[2], sys.argv[3], tp, sl)
                 else:
-                    resolve_call('order_now', sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])
+                    resolve_call('order_now', sys.argv[1], sys.argv[2], tp, sl)
             case 'active':
                 resolve_call('show_active_positions')
             case 'close':

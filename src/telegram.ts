@@ -90,7 +90,7 @@ export class Telegram {
         if (isOrder) {
           const isBuy = upperCaseMessage.includes('BUY') ? true : false;
           const upperCaseMessages = upperCaseMessage.split('\n');
-          const regexPrice = [/([0-9.]+ *- *[0-9.]+)/g, /([0-9.]+)/g];
+          const regexPrice = [/([0-9.]+ *- *[0-9.]{3,})/g, /([0-9.]{3,})/g];
           const resolvePrice = (price: string) => {
             if (price.includes('-')) {
               const [min, max] = price.split('-');
@@ -151,13 +151,23 @@ export class Telegram {
                 order.price
               }`,
             );
-            this.event.emit('message', [
-              isBuy ? 'buy' : 'sell',
-              symbol,
-              order.price,
-              order.tp,
-              order.sl,
-            ]);
+            if (order.price !== -1 && order.tp !== -1 && order.sl !== -1) {
+              this.event.emit('message', [
+                isBuy ? 'buy' : 'sell',
+                symbol,
+                order.price,
+                order.tp,
+                order.sl,
+              ]);
+            } else {
+              this.sendMessage(
+                `Could not find all required information to place order\n${
+                  order.price === -1 ? 'Price' : ''
+                }${order.tp === -1 ? 'TP' : ''}${
+                  order.sl === -1 ? 'SL' : ''
+                } is missing`,
+              );
+            }
           }
         }
       }
