@@ -77,7 +77,7 @@ export class Telegram {
         this.resolveMessage(message);
       }
     } else if (sender.className === 'Channel') {
-      const upperCaseMessage = message.toUpperCase();
+      const upperCaseMessage = message.toUpperCase().replace(/[/]/gi, '');
       const activeChannel = config.channels.find(
         (c) => c.name === sender.username,
       );
@@ -97,19 +97,38 @@ export class Telegram {
             }
           };
           const getPrice = (messages: string[]) => {
+            const order = {
+              price: -1,
+              tp: -1,
+              sl: -1,
+            };
             for (const message of messages) {
-              if (!message.match(/TAKE|TP|SL|STOP/g)) {
+              if (message.match(/TAKE|TP/g)) {
+                if (order.tp === -1) {
+                  const regex = /([0-9.]{3,})/g;
+                  const match = regex.exec(message);
+                  if (match) {
+                    order.tp = resolvePrice(match[1]);
+                  }
+                }
+              } else if (message.match(/SL|STOP/g)) {
+                const regex = /([0-9.]{3,})/g;
+                const match = regex.exec(message);
+                if (match) {
+                  order.sl = parseFloat(match[1]);
+                }
+              } else {
                 for (const regex of regexPrice) {
                   const match = regex.exec(message);
                   if (match) {
-                    return resolvePrice(match[1]);
+                    order.price = parseFloat(match[1]);
                   }
                 }
               }
             }
-            return null;
+            return order;
           };
-          const price = getPrice(upperCaseMessages);
+          const order = getPrice(upperCaseMessages);
           const getSymbol = (message: string) => {
             const symbol = config.symbols.find((s) => message.includes(s));
             if (symbol === 'GOLD') {
@@ -119,25 +138,22 @@ export class Telegram {
             }
           };
           const symbol = getSymbol(upperCaseMessage);
-          if (price && symbol) {
-            console.log(symbol, price);
+          if (order && symbol) {
+            console.log(symbol, order);
 
-            const order = {
-              isBuy,
-              price,
-              symbol,
-            };
             this.sendMessage(
               `Found Signal from ${sender.username}\nPlacing ${
                 process.env.TRADE_AMOUNT
-              } orders to ${order.isBuy ? 'Buy' : 'Sell'} ${order.symbol} at ${
+              } orders to ${isBuy ? 'Buy' : 'Sell'} ${symbol} at ${
                 order.price
               }`,
             );
             this.event.emit('message', [
-              order.isBuy ? 'buy' : 'sell',
-              order.symbol,
+              isBuy ? 'buy' : 'sell',
+              symbol,
               order.price,
+              order.tp,
+              order.sl,
             ]);
           }
         }
