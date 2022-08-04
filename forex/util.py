@@ -53,8 +53,8 @@ def show_info():
 
     
 
-def get_active_positions():
-    positions=mt5.positions_get()
+def get_active_positions(symbol = 0):
+    positions=mt5.positions_get() if symbol == 0 else  mt5.positions_get(symbol=symbol)
     if not len(positions):
         return["fail", f"No positions found, error code={format(mt5.last_error())}"]
     elif len(positions)>0:
@@ -184,6 +184,7 @@ def order_limit(type, symbol, max_price, tp, sl):
         output_exit("success", f'Imposibble To Order\n{symbol} current price is {ask_price} and ask price is {max_price}')
     for i in range(int(config["TRADE_AMOUNT"])):
         lot = float(config['TRADE_VOLUME'])
+        max_price += 500 * point * (1 if type == 'buy' else -1)
         deviation = 20
         request = {
             "action": mt5.TRADE_ACTION_PENDING,
@@ -246,7 +247,7 @@ def close_position(symbol, close_amount):
         output_exit("success", f"Close {close_amount} Order success, {symbol} {lot} lots at {price} \nProfit: {profit}")
 
 def edit_position(symbol, key, value):
-    active_positions=get_active_positions()
+    active_positions=get_active_positions(symbol)
     if active_positions[0]=="fail":
         output_exit("fail", 'There is no active position')
     else:
@@ -255,7 +256,7 @@ def edit_position(symbol, key, value):
         value = int(value) * isBuy
         for i in range(len(active_positions[1])):
             position = active_positions[1][i]
- 
+            price=mt5.symbol_info(symbol)
             lot = float(config['TRADE_VOLUME'])
             point = price.point
             sl = position['sl']
@@ -276,7 +277,6 @@ def edit_position(symbol, key, value):
                 "position": position['ticket'],
                 "sl": sl,
                 "tp": tp,
-                "deviation": deviation,
                 "magic": 234000,
                 "comment": "python script close",
             }
