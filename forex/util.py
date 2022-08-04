@@ -257,9 +257,7 @@ def edit_position(symbol, key, value):
             position = active_positions[1][i]
  
             lot = float(config['TRADE_VOLUME'])
-            price=mt5.symbol_info_tick(symbol).bid
-            deviation=20
-            point = mt5.symbol_info(symbol).point
+            point = price.point
             sl = position['sl']
             tp = position['tp']
             if (key == "be"):
@@ -276,7 +274,6 @@ def edit_position(symbol, key, value):
                 "volume": lot,
                 "type": mt5.ORDER_TYPE_BUY if position['type'] == 0 else mt5.ORDER_TYPE_SELL,
                 "position": position['ticket'],
-                "price": price,
                 "sl": sl,
                 "tp": tp,
                 "deviation": deviation,

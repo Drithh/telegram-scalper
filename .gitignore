@@ -30,3 +30,7 @@ build/
 
 # Misc
 .DS_Store
+
+forex/__pycache__
+
+.env.old
