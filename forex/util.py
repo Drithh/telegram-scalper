@@ -99,7 +99,7 @@ def show_active_positions():
  
 
 
-def order_now(type, symbol, tp, sl):
+def orders_now(type, symbol, tp, sl):
     # prepare the buy request structure
     success = 0
     symbol_info = mt5.symbol_info(symbol)
@@ -110,43 +110,50 @@ def order_now(type, symbol, tp, sl):
     if not symbol_info.visible:
         if not mt5.symbol_select(symbol,True):
             output_exit( "fail", f"symbol_select {symbol} failed, exit")
-    for i in range(int(config["TRADE_AMOUNT"])):
-        lot = float(config['TRADE_VOLUME'])
-        price = mt5.symbol_info(symbol)
-        point = price.point
-        ask_price = price.ask
-        bid_price = price.bid
-        if (tp == -1):
-            if (type == "buy"):
-                tp = ask_price + tp_point * point
-                sl = ask_price - sl_point * point
-            else:
-                tp = bid_price - tp_point * point
-                sl = bid_price + sl_point * point
-
-        deviation = 20
-        request = {
-            "action": mt5.TRADE_ACTION_DEAL,
-            "symbol": symbol,
-            "volume": lot,
-            "type": mt5.ORDER_TYPE_BUY if type == 'buy' else mt5.ORDER_TYPE_SELL,
-            "price": ask_price if type == 'buy' else bid_price,
-            "sl": sl,
-            "tp": tp,
-            "deviation": deviation,
-            "magic": 234000,
-            "comment": "python script open",
-            "type_time": mt5.ORDER_TIME_DAY,
-            "type_filling": mt5.ORDER_FILLING_FOK,
-        }
-        result = mt5.order_send(request)
-        if result.retcode != mt5.TRADE_RETCODE_DONE:
-            output_exit("fail", f"Order failed, message={result.comment}")
-        else:
-            success += 1
-    output_exit("success", f"Successfully placed {success} orders in {symbol} for {ask_price if type == 'buy' else bid_price}")
+    price = mt5.symbol_info(symbol)
+    point = price.point
+    ask_price = price.ask
+    bid_price = price.bid
     
-def order_limit(type, symbol, max_price, tp, sl):
+    if (tp == -1):
+        if (type == "buy"):
+            tp = ask_price + tp_point * point
+            sl = ask_price - sl_point * point
+        else:
+            tp = bid_price - tp_point * point
+            sl = bid_price + sl_point * point
+    max_price = ask_price if type == "buy" else bid_price
+    for i in range(int(config["TRADE_AMOUNT"])):
+        if (i == 0):
+            success += order_now(type, max_price, symbol, tp, sl)
+        else:
+            max_price += point * 150 * (1 if type == "buy" else -1)
+            success += order_limit(type, max_price, symbol, tp, sl)
+    output_exit("success", f"Successfully placed {success} orders in {symbol} for {ask_price if type == 'buy' else bid_price}")
+
+def order_now(type, max_price, symbol, tp, sl):
+    request = {
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": symbol,
+        "volume": float(config['TRADE_VOLUME']),
+        "type": mt5.ORDER_TYPE_BUY if type == 'buy' else mt5.ORDER_TYPE_SELL,
+        "price": max_price,
+        "sl": sl,
+        "tp": tp,
+        "deviation": 20,
+        "magic": 234000,
+        "comment": "python script open",
+        "type_time": mt5.ORDER_TIME_DAY,
+        "type_filling": mt5.ORDER_FILLING_FOK,
+    }
+    result = mt5.order_send(request)
+    if result.retcode != mt5.TRADE_RETCODE_DONE:
+        output_exit("fail", f"Order failed, message={result.comment}")
+    else:
+        return 1
+        
+
+def orders_limit(type, symbol, max_price, tp, sl):
     success = 0
     # prepare the buy request structure
     symbol_info = mt5.symbol_info(symbol)
@@ -183,31 +190,32 @@ def order_limit(type, symbol, max_price, tp, sl):
     if (abs(ask_price - max_price) * point > 5000):
         output_exit("success", f'Imposibble To Order\n{symbol} current price is {ask_price} and ask price is {max_price}')
     for i in range(int(config["TRADE_AMOUNT"])):
-        lot = float(config['TRADE_VOLUME'])
-        max_price += 500 * point * (1 if type == 'buy' else -1)
-        deviation = 20
-        request = {
-            "action": mt5.TRADE_ACTION_PENDING,
-            "symbol": symbol,
-            "volume": lot,
-            "type": mt5.ORDER_TYPE_BUY_LIMIT if type == 'buy' else mt5.ORDER_TYPE_SELL_LIMIT,
-            "price": max_price,
-            "sl": sl,
-            "tp": tp,
-            "deviation": deviation,
-            "magic": 234000,
-            "comment": "python script open",
-            "type_time": mt5.ORDER_TIME_SPECIFIED,
-            "type_filling": mt5.ORDER_FILLING_FOK,
-            "expiration": expiration_time()
-        }
-        result = mt5.order_send(request)
-        if result.retcode != mt5.TRADE_RETCODE_DONE:
-            output_exit("fail", f"Order failed, message={result.comment}")
-        else:
-            success += 1
+        max_price += point * 150 * (1 if type == "buy" else -1)
+        sucess += order_now(type, max_price, symbol, tp, sl)
     output_exit("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
-    
+
+def order_limit(type, max_price, symbol, tp, sl):
+    request = {
+        "action": mt5.TRADE_ACTION_PENDING,
+        "symbol": symbol,
+        "volume": float(config['TRADE_VOLUME']),
+        "type": mt5.ORDER_TYPE_BUY_LIMIT if type == 'buy' else mt5.ORDER_TYPE_SELL_LIMIT,
+        "price": max_price,
+        "sl": sl,
+        "tp": tp,
+        "deviation": 20,
+        "magic": 234000,
+        "comment": "python script open",
+        "type_time": mt5.ORDER_TIME_SPECIFIED,
+        "type_filling": mt5.ORDER_FILLING_FOK,
+        "expiration": expiration_time()
+    }
+    result = mt5.order_send(request)
+    if result.retcode != mt5.TRADE_RETCODE_DONE:
+        output_exit("fail", f"Order failed, message={result.comment}")
+    else:
+        return 1
+
 def close_position(symbol, close_amount):
     active_positions=get_active_positions()
     if active_positions[0]=="fail":
