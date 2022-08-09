@@ -269,11 +269,13 @@ export class Telegram {
       };
 
       for (const message of messages) {
-        if (message.match(/TAKE|TP/g) && order.tp === -1) {
-          const regex = /([0-9.]{3,})/g;
-          const match = regex.exec(message);
-          if (match) {
-            order.tp = parseFloat(match[1]);
+        if (message.match(/TAKE|TP/g)) {
+          if (order.tp === -1) {
+            const regex = /([0-9.]{3,})/g;
+            const match = regex.exec(message);
+            if (match) {
+              order.tp = parseFloat(match[1]);
+            }
           }
         } else if (message.match(/SL|STOP/g)) {
           const regex = /([0-9.]{3,})/g;
@@ -313,37 +315,47 @@ export class Telegram {
       }
     }
 
-    this.sendMessage(
-      `Found Signal from ${sender}\nPlacing ${
-        process.env.TRADE_AMOUNT
-      } orders to ${
-        order.type
-          ? order.type[0].toUpperCase() + order.type.substring(1)
-          : 'unknown'
-      } ${order.symbol} at ${order.price}`,
-    );
-    if (
-      order.price !== -1 &&
-      order.tp !== -1 &&
-      order.sl !== -1 &&
-      order.type !== '' &&
-      order.symbol !== ''
-    ) {
-      this.event.emit('message', [
-        order.type,
-        order.symbol,
-        order.price,
-        order.tp,
-        order.sl,
-      ]);
-    } else {
+    const countMissingOrder = () => {
+      let count = 0;
+      for (const key in order) {
+        if (order[key] !== -1 || order[key] !== '') {
+          count++;
+        }
+      }
+      return count;
+    };
+    const missingOrder = countMissingOrder();
+
+    if (missingOrder > 3) {
       this.sendMessage(
-        `Could not find all required information to place order\n${
-          order.symbol === '' ? 'Symbol ' : ''
-        }${order.price === -1 ? 'Price ' : ''}${order.tp === -1 ? 'TP ' : ''}${
-          order.sl === -1 ? 'SL ' : ''
-        } is missing`,
+        `Found Signal from ${sender}\nPlacing ${
+          process.env.TRADE_AMOUNT
+        } orders to ${
+          order.type
+            ? order.type[0].toUpperCase() + order.type.substring(1)
+            : 'unknown'
+        } ${order.symbol} at ${order.price}`,
       );
+
+      if (missingOrder === 5) {
+        this.event.emit('message', [
+          order.type,
+          order.symbol,
+          order.price,
+          order.tp,
+          order.sl,
+        ]);
+      } else {
+        this.sendMessage(
+          `Could not find all required information to place order\n${
+            order.symbol === '' ? 'Symbol ' : ''
+          }${order.price === -1 ? 'Price ' : ''}${
+            order.tp === -1 ? 'TP ' : ''
+          }${order.sl === -1 ? 'SL ' : ''}${
+            order.type === '' ? 'Type ' : ''
+          } is missing`,
+        );
+      }
     }
   };
 }

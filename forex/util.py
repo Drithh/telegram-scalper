@@ -20,7 +20,7 @@ def output_exit(status: str, message):
     
 def expiration_time():
     import datetime as dt
-    expire = dt.datetime.now() + dt.timedelta(hours=3, minutes=30)
+    expire = dt.datetime.now() + dt.timedelta(hours=5)
     timestamp = int(expire.timestamp())
     return timestamp
 
@@ -32,10 +32,8 @@ tp_point = 120
 def resolve_call(call, *args):
     if call=="info":
         output('info', show_info())
-    elif call=="order_limit":
-        return orders_limit(args[0], args[1], args[2], args[3], args[4])
-    elif call=="order_now":
-        return orders_now(args[0], args[1], args[2], args[3])
+    elif call=="order":
+        return send_orders(args[0], args[1], args[2], args[3], args[4])
     elif call=="show_active_positions":
         return show_active_positions()
     elif call=="close_position":
@@ -97,10 +95,8 @@ def show_active_positions():
         output_exit(result[0], result[1])
             
  
-
-
-def orders_now(type, symbol, tp, sl):
-    # prepare the buy request structure
+def send_orders(type, symbol, max_price, tp, sl):
+    isBuy = True if type == 'buy' else False
     success = 0
     symbol_info = mt5.symbol_info(symbol)
     if symbol_info is None:
@@ -110,30 +106,41 @@ def orders_now(type, symbol, tp, sl):
     if not symbol_info.visible:
         if not mt5.symbol_select(symbol,True):
             output_exit( "fail", f"symbol_select {symbol} failed, exit")
-    price = mt5.symbol_info(symbol)
-    point = price.point
-    ask_price = price.ask
-    bid_price = price.bid
     
-    if (tp == -1):
-        if (type == "buy"):
-            tp = ask_price + tp_point * point
-            sl = ask_price - sl_point * point
-        else:
-            tp = bid_price - tp_point * point
-            sl = bid_price + sl_point * point
-    max_price = ask_price if type == "buy" else bid_price
-    for i in range(int(config["TRADE_AMOUNT"])):
-        if (i == 0):
-            success += order_now(type, max_price, symbol, tp, sl)
-        else:
-            max_price += point * 30 * i * (-1 if type == "buy" else 1)
-            if ((type == 'sell' and max_price >= sl) or (type == 'buy' and max_price <= sl)):
-                break
-            success += order_limit(type, max_price, symbol, tp, sl)
-    output_exit("success", f"Successfully placed {success} orders in {symbol} for {ask_price if type == 'buy' else bid_price}")
+    if (max_price == -1):
+        max_price = symbol_info.ask if isBuy else symbol_info.bid
 
-def order_now(type, max_price, symbol, tp, sl):
+    if (tp == -1):
+        sl = max_price + sl_point * symbol_info.point * (-1 if isBuy else 1)
+        tp = max_price + tp_point * symbol_info.point * (1 if isBuy else -1)
+     
+    if ((isBuy and symbol_info.ask <= max_price)):
+        output("success", f'{symbol} current price is {symbol_info.ask} and bid price is {max_price}\nPlacing order now')
+        success += order_now(type, symbol, symbol_info.ask, tp, sl)
+        max_price = symbol_info.ask
+    elif ((not isBuy and symbol_info.bid >= max_price)):
+        output("success", f'{symbol} current price is {symbol_info.bid} and ask price is {max_price}\nPlacing order now')
+        success += order_now(type, symbol, symbol_info.bid, tp, sl)
+        max_price = symbol_info.bid
+    elif (isBuy and abs(symbol_info.ask - max_price) / symbol_info.point < 30):
+        output("success", f'{symbol} current price is {symbol_info.ask} and ask price is {max_price}\nImposibble to order limit ({abs(symbol_info.ask - max_price) / symbol_info.point/ 10} pip)\nPlacing order now')
+        success += order_now(type, symbol, symbol_info.ask, tp, sl)
+    elif (not isBuy and abs(symbol_info.bid - max_price) / symbol_info.point < 30):
+        output("success", f'{symbol} current price is {symbol_info.bid} and bid price is {max_price}\nImposibble to order limit ({abs(symbol_info.bid - max_price) / symbol_info.point / 10} pip)\nPlacing order now')
+        success += order_now(type, symbol, symbol_info.bid, tp, sl)
+    else:
+        success += order_limit(type, symbol, max_price, tp, sl)
+    
+    for i in range(int(config["TRADE_AMOUNT"]) - 1):
+        max_price += symbol_info.point * 50 * (-1 if isBuy else 1)
+        if ((type == 'sell' and max_price >= sl) or (isBuy and max_price <= sl)):
+            break
+        success += order_limit(type, symbol, max_price, tp, sl)
+
+    output_exit("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
+
+
+def order_now(type, symbol, max_price, tp, sl):
     request = {
         "action": mt5.TRADE_ACTION_DEAL,
         "symbol": symbol,
@@ -153,52 +160,9 @@ def order_now(type, max_price, symbol, tp, sl):
         output_exit("fail", f"Order failed, message={result.comment}")
     else:
         return 1
-        
 
-def orders_limit(type, symbol, max_price, tp, sl):
-    success = 0
-    # prepare the buy request structure
-    symbol_info = mt5.symbol_info(symbol)
-    if symbol_info is None:
-        output_exit( "fail", symbol+" not found, can not call order_check()" )
-    
-    # if the symbol is unavailable in MarketWatch, add it
-    if not symbol_info.visible:
-        if not mt5.symbol_select(symbol,True):
-            output_exit( "fail", f"symbol_select {symbol} failed, exit")
-    bid_price = symbol_info.bid
-    ask_price = symbol_info.ask
-    point = symbol_info.point
-    max_price = float(max_price)
-    if (tp == -1):
-        sl = max_price + sl_point * point * -1 if type == 'buy' else 1
-        tp = max_price + tp_point * point * 1 if type == 'buy' else 1
-    # print(abs(ask_price - max_price) / point)
-    # if (abs(ask_price - max_price) * point > -1000):
-    #     output_exit("success", f'Imposibble To Order\n{symbol} current price is {ask_price} and ask price is {max_price}')
-    if ((type == "buy" and ask_price <= max_price)):
-        output("success", f'{symbol} current price is {ask_price} and bid price is {max_price}\nPlacing order now')
-        orders_now(type, symbol, tp, sl)
-    elif ( (type == "sell" and bid_price >= max_price)):
-        output("success", f'{symbol} current price is {bid_price} and ask price is {max_price}\nPlacing order now')
-        orders_now(type, symbol, tp, sl)
-        
-    if (type == "buy" and abs(ask_price - max_price) / point < 20):
-        output("success", f'{symbol} current price is {ask_price} and ask price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point/ 10} pip)\nPlacing order now')
-        orders_now(type, symbol, tp, sl)
-    elif (type == "sell" and abs(bid_price - max_price) / point < 20):
-        output("success", f'{symbol} current price is {bid_price} and bid price is {max_price}\nImposibble to order limit ({abs(bid_price - max_price) / point / 10} pip)\nPlacing order now')
-        orders_now(type, symbol, tp, sl)
-
-    for i in range(int(config["TRADE_AMOUNT"])):
-        max_price += point * 30 * i * (-1 if type == "buy" else 1)
-        if ((type == 'sell' and max_price >= sl) or (type == 'buy' and max_price <= sl)):
-            break
-        success += order_limit(type, max_price, symbol, tp, sl)
-
-    output_exit("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
-
-def order_limit(type, max_price, symbol, tp, sl):
+def order_limit(type, symbol, max_price, tp, sl):
+    print(type, symbol, max_price, tp, sl)
     request = {
         "action": mt5.TRADE_ACTION_PENDING,
         "symbol": symbol,
