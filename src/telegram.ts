@@ -74,7 +74,7 @@ export class Telegram {
     const sender = await event.message.getSender();
     if (sender.className === 'User') {
       if (sender.id.toString() === process.env.OWNER_ID) {
-        this.resolveMessage(message);
+        this.resolveUserMessage(message);
       }
     } else if (sender.className === 'Channel') {
       const upperCaseMessage = message
@@ -85,91 +85,7 @@ export class Telegram {
         (c) => c.name === sender.username,
       );
       if (activeChannel) {
-        const isOrder =
-          upperCaseMessage.includes('BUY') || upperCaseMessage.includes('SELL');
-        if (isOrder) {
-          const isBuy = upperCaseMessage.includes('BUY') ? true : false;
-          const upperCaseMessages = upperCaseMessage.split('\n');
-          const regexPrice = [/([0-9.]+ *- *[0-9.]{3,})/g, /([0-9.]{3,})/g];
-          const resolvePrice = (price: string) => {
-            if (price.includes('-')) {
-              const [min, max] = price.split('-');
-              return isBuy ? parseFloat(max) : parseFloat(min);
-            } else {
-              return parseFloat(price);
-            }
-          };
-          const getPrice = (messages: string[]) => {
-            const order = {
-              price: -1,
-              tp: -1,
-              sl: -1,
-            };
-            for (const message of messages) {
-              if (message.match(/TAKE|TP/g)) {
-                if (order.tp === -1) {
-                  const regex = /([0-9.]{3,})/g;
-                  const match = regex.exec(message);
-                  if (match) {
-                    order.tp = resolvePrice(match[1]);
-                  }
-                }
-              } else if (message.match(/SL|STOP/g)) {
-                const regex = /([0-9.]{3,})/g;
-                const match = regex.exec(message);
-                if (match) {
-                  order.sl = parseFloat(match[1]);
-                }
-              } else {
-                for (const regex of regexPrice) {
-                  const match = regex.exec(message);
-                  if (match) {
-                    order.price = parseFloat(match[1]);
-                  }
-                }
-              }
-            }
-            return order;
-          };
-          const order = getPrice(upperCaseMessages);
-          const getSymbol = (message: string) => {
-            const symbol = config.symbols.find((s) => message.includes(s));
-            if (symbol === 'GOLD') {
-              return 'XAUUSD';
-            } else {
-              return symbol;
-            }
-          };
-          const symbol = getSymbol(upperCaseMessage);
-          if (order && symbol) {
-            console.log(symbol, order);
-
-            this.sendMessage(
-              `Found Signal from ${sender.username}\nPlacing ${
-                process.env.TRADE_AMOUNT
-              } orders to ${isBuy ? 'Buy' : 'Sell'} ${symbol} at ${
-                order.price
-              }`,
-            );
-            if (order.price !== -1 && order.tp !== -1 && order.sl !== -1) {
-              this.event.emit('message', [
-                isBuy ? 'buy' : 'sell',
-                symbol,
-                order.price,
-                order.tp,
-                order.sl,
-              ]);
-            } else {
-              this.sendMessage(
-                `Could not find all required information to place order\n${
-                  order.price === -1 ? 'Price' : ''
-                }${order.tp === -1 ? 'TP' : ''}${
-                  order.sl === -1 ? 'SL' : ''
-                } is missing`,
-              );
-            }
-          }
-        }
+        this.resolveChannelMessage(upperCaseMessage, sender.username);
       }
     }
   }
@@ -185,7 +101,7 @@ export class Telegram {
     );
   }
 
-  resolveMessage = (message: string) => {
+  resolveUserMessage = (message: string) => {
     switch (message) {
       case '/info':
         this.event.emit('message', ['info']);
@@ -321,6 +237,113 @@ export class Telegram {
       default:
         this.sendMessage('command not found\nsend /help for help');
         break;
+    }
+  };
+
+  resolveChannelMessage = (message: string, sender: string) => {
+    const order = {
+      type: '',
+      symbol: '',
+      price: -1,
+      tp: -1,
+      sl: -1,
+    };
+
+    const getType = (message: string) => {
+      if (message.match('BUY')) {
+        return 'buy';
+      } else if (message.match('SELL')) {
+        return 'sell';
+      } else {
+        return '';
+      }
+    };
+
+    const getPrice = (messages: string[]) => {
+      const resolvePrice = (price: string) => {
+        if (price.includes('-')) {
+          return parseFloat(price.split('-')[0]);
+        } else {
+          return parseFloat(price);
+        }
+      };
+
+      for (const message of messages) {
+        if (message.match(/TAKE|TP/g) && order.tp === -1) {
+          const regex = /([0-9.]{3,})/g;
+          const match = regex.exec(message);
+          if (match) {
+            order.tp = parseFloat(match[1]);
+          }
+        } else if (message.match(/SL|STOP/g)) {
+          const regex = /([0-9.]{3,})/g;
+          const match = regex.exec(message);
+          if (match) {
+            order.sl = parseFloat(match[1]);
+          }
+        } else {
+          const regexPrice = [/([0-9.]+ *- *[0-9.]{3,})/g, /([0-9.]{3,})/g];
+          for (const regex of regexPrice) {
+            const match = regex.exec(message);
+            if (match) {
+              order.price = resolvePrice(match[1]);
+            }
+          }
+        }
+      }
+    };
+    const getSymbol = (message: string) => {
+      const symbol = config.symbols.find((s) => message.includes(s));
+      if (symbol === 'GOLD') {
+        return 'XAUUSD';
+      } else {
+        return symbol;
+      }
+    };
+    order.symbol = getSymbol(message);
+    order.type = getType(message);
+    getPrice(message.split('\n'));
+
+    if (order.type === '' && order.tp !== -1 && order.sl !== -1) {
+      if (order.tp > order.sl) {
+        order.type = 'buy';
+      }
+      if (order.tp < order.sl) {
+        order.type = 'sell';
+      }
+    }
+
+    this.sendMessage(
+      `Found Signal from ${sender}\nPlacing ${
+        process.env.TRADE_AMOUNT
+      } orders to ${
+        order.type
+          ? order.type[0].toUpperCase() + order.type.substring(1)
+          : 'unknown'
+      } ${order.symbol} at ${order.price}`,
+    );
+    if (
+      order.price !== -1 &&
+      order.tp !== -1 &&
+      order.sl !== -1 &&
+      order.type !== '' &&
+      order.symbol !== ''
+    ) {
+      this.event.emit('message', [
+        order.type,
+        order.symbol,
+        order.price,
+        order.tp,
+        order.sl,
+      ]);
+    } else {
+      this.sendMessage(
+        `Could not find all required information to place order\n${
+          order.symbol === '' ? 'Symbol ' : ''
+        }${order.price === -1 ? 'Price ' : ''}${order.tp === -1 ? 'TP ' : ''}${
+          order.sl === -1 ? 'SL ' : ''
+        } is missing`,
+      );
     }
   };
 }
