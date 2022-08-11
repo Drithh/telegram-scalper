@@ -271,20 +271,20 @@ export class Telegram {
       for (const message of messages) {
         if (message.match(/TAKE|TP/g)) {
           if (order.tp === -1) {
-            const regex = /([0-9.]{3,})/g;
+            const regex = /([0-9.]{4,},})/g;
             const match = regex.exec(message);
             if (match) {
               order.tp = parseFloat(match[1]);
             }
           }
         } else if (message.match(/SL|STOP/g)) {
-          const regex = /([0-9.]{3,})/g;
+          const regex = /([0-9.]{4,})/g;
           const match = regex.exec(message);
           if (match) {
             order.sl = parseFloat(match[1]);
           }
         } else {
-          const regexPrice = [/([0-9.]+ *- *[0-9.]{3,})/g, /([0-9.]{3,})/g];
+          const regexPrice = [/([0-9.]+ *- *[0-9.]{4,})/g, /([0-9.]{4,})/g];
           for (const regex of regexPrice) {
             const match = regex.exec(message);
             if (match) {
@@ -298,6 +298,8 @@ export class Telegram {
       const symbol = config.symbols.find((s) => message.includes(s));
       if (symbol === 'GOLD') {
         return 'XAUUSD';
+      } else if (symbol === 'NAS100') {
+        return 'US100';
       } else {
         return symbol;
       }
@@ -325,8 +327,8 @@ export class Telegram {
       return count;
     };
     const missingOrder = countMissingOrder();
-
-    if (missingOrder > 3) {
+    console.log(order);
+    if (missingOrder <= 2) {
       this.sendMessage(
         `Found Signal from ${sender}\nPlacing ${
           process.env.TRADE_AMOUNT

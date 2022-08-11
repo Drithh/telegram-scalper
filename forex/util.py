@@ -122,20 +122,14 @@ def send_orders(type, symbol, max_price, tp, sl):
         output("success", f'{symbol} current price is {symbol_info.bid} and ask price is {max_price}\nPlacing order now')
         success += order_now(type, symbol, symbol_info.bid, tp, sl)
         max_price = symbol_info.bid
-    elif (isBuy and abs(symbol_info.ask - max_price) / symbol_info.point < 30):
-        output("success", f'{symbol} current price is {symbol_info.ask} and ask price is {max_price}\nImposibble to order limit ({abs(symbol_info.ask - max_price) / symbol_info.point/ 10} pip)\nPlacing order now')
-        success += order_now(type, symbol, symbol_info.ask, tp, sl)
-    elif (not isBuy and abs(symbol_info.bid - max_price) / symbol_info.point < 30):
-        output("success", f'{symbol} current price is {symbol_info.bid} and bid price is {max_price}\nImposibble to order limit ({abs(symbol_info.bid - max_price) / symbol_info.point / 10} pip)\nPlacing order now')
-        success += order_now(type, symbol, symbol_info.bid, tp, sl)
     else:
         success += order_limit(type, symbol, max_price, tp, sl)
     
     for i in range(int(config["TRADE_AMOUNT"]) - 1):
+        success += order_limit(type, symbol, max_price, tp, sl)
         max_price += symbol_info.point * 50 * (-1 if isBuy else 1)
         if ((type == 'sell' and max_price >= sl) or (isBuy and max_price <= sl)):
             break
-        success += order_limit(type, symbol, max_price, tp, sl)
 
     output_exit("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
 
@@ -162,7 +156,7 @@ def order_now(type, symbol, max_price, tp, sl):
         return 1
 
 def order_limit(type, symbol, max_price, tp, sl):
-    print(type, symbol, max_price, tp, sl)
+    # print(type, symbol, max_price, tp, sl)
     request = {
         "action": mt5.TRADE_ACTION_PENDING,
         "symbol": symbol,
@@ -175,7 +169,7 @@ def order_limit(type, symbol, max_price, tp, sl):
         "magic": 234000,
         "comment": "python script open",
         "type_time": mt5.ORDER_TIME_SPECIFIED,
-        "type_filling": mt5.ORDER_FILLING_FOK,
+        "type_filling": mt5.ORDER_FILLING_IOC,
         "expiration": expiration_time()
     }
     result = mt5.order_send(request)

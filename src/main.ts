@@ -10,6 +10,7 @@ import { Trade } from './trade';
     telegram.sendMessage(message);
   });
   telegram.event.on('message', (event: string[]) => {
+    console.log(event);
     trade.call(event);
   });
 })();
