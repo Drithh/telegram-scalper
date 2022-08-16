@@ -38,11 +38,11 @@ else:
                 price = -1
                 length = len(sys.argv)
                 if (length >= 5):
-                    tp = float(sys.argv[length - 2])
-                    sl = float(sys.argv[length - 1])
-                if length == 6 or length == 4:
+                    tp = float(sys.argv[length - 3])
+                    sl = float(sys.argv[length - 2])
+                if length == 7 or length == 5:
                     price = float(sys.argv[3])
-                resolve_call('order', sys.argv[1], sys.argv[2], price, tp, sl)
+                resolve_call('order', sys.argv[1], sys.argv[2], price, tp, sl, sys.argv[length - 1])
                 
             case 'active':
                 resolve_call('show_active_positions')

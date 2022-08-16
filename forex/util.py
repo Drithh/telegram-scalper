@@ -33,7 +33,7 @@ def resolve_call(call, *args):
     if call=="info":
         output('info', show_info())
     elif call=="order":
-        return send_orders(args[0], args[1], args[2], args[3], args[4])
+        return send_orders(args[0], args[1], args[2], args[3], args[4], args[5])
     elif call=="show_active_positions":
         return show_active_positions()
     elif call=="close_position":
@@ -95,7 +95,7 @@ def show_active_positions():
         output_exit(result[0], result[1])
             
  
-def send_orders(type, symbol, max_price, tp, sl):
+def send_orders(type, symbol, max_price, tp, sl, comment):
     isBuy = True if type == 'buy' else False
     success = 0
     symbol_info = mt5.symbol_info(symbol)
@@ -116,17 +116,17 @@ def send_orders(type, symbol, max_price, tp, sl):
      
     if ((isBuy and symbol_info.ask <= max_price)):
         output("success", f'{symbol} current price is {symbol_info.ask} and bid price is {max_price}\nPlacing order now')
-        success += order_now(type, symbol, symbol_info.ask, tp, sl)
+        success += order_now(type, symbol, symbol_info.ask, tp, sl, comment)
         max_price = symbol_info.ask
     elif ((not isBuy and symbol_info.bid >= max_price)):
         output("success", f'{symbol} current price is {symbol_info.bid} and ask price is {max_price}\nPlacing order now')
-        success += order_now(type, symbol, symbol_info.bid, tp, sl)
+        success += order_now(type, symbol, symbol_info.bid, tp, sl, comment)
         max_price = symbol_info.bid
     else:
-        success += order_limit(type, symbol, max_price, tp, sl)
+        success += order_limit(type, symbol, max_price, tp, sl, comment)
     
     for i in range(int(config["TRADE_AMOUNT"]) - 1):
-        success += order_limit(type, symbol, max_price, tp, sl)
+        success += order_limit(type, symbol, max_price, tp, sl, comment)
         max_price += symbol_info.point * 50 * (-1 if isBuy else 1)
         if ((type == 'sell' and max_price >= sl) or (isBuy and max_price <= sl)):
             break
@@ -134,7 +134,7 @@ def send_orders(type, symbol, max_price, tp, sl):
     output_exit("success", f"Successfully placed {success} orders in {symbol} for {max_price}")
 
 
-def order_now(type, symbol, max_price, tp, sl):
+def order_now(type, symbol, max_price, tp, sl, comment):
     request = {
         "action": mt5.TRADE_ACTION_DEAL,
         "symbol": symbol,
@@ -145,7 +145,7 @@ def order_now(type, symbol, max_price, tp, sl):
         "tp": tp,
         "deviation": 20,
         "magic": 234000,
-        "comment": "python script open",
+        "comment": comment,
         "type_time": mt5.ORDER_TIME_DAY,
         "type_filling": mt5.ORDER_FILLING_FOK,
     }
@@ -155,7 +155,7 @@ def order_now(type, symbol, max_price, tp, sl):
     else:
         return 1
 
-def order_limit(type, symbol, max_price, tp, sl):
+def order_limit(type, symbol, max_price, tp, sl, comment):
     # print(type, symbol, max_price, tp, sl)
     request = {
         "action": mt5.TRADE_ACTION_PENDING,
@@ -167,7 +167,7 @@ def order_limit(type, symbol, max_price, tp, sl):
         "tp": tp,
         "deviation": 20,
         "magic": 234000,
-        "comment": "python script open",
+        "comment": comment,
         "type_time": mt5.ORDER_TIME_SPECIFIED,
         "type_filling": mt5.ORDER_FILLING_IOC,
         "expiration": expiration_time()
