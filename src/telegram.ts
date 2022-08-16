@@ -271,7 +271,7 @@ export class Telegram {
       for (const message of messages) {
         if (message.match(/TAKE|TP/g)) {
           if (order.tp === -1) {
-            const regex = /([0-9.]{4,},})/g;
+            const regex = /([0-9.]{4,})/g;
             const match = regex.exec(message);
             if (match) {
               order.tp = parseFloat(match[1]);
@@ -319,11 +319,11 @@ export class Telegram {
 
     const countMissingOrder = () => {
       let count = 0;
-      for (const key in order) {
-        if (order[key] !== -1 || order[key] !== '') {
-          count++;
-        }
-      }
+      count += order.type === '' ? 1 : 0;
+      count += order.symbol === '' ? 1 : 0;
+      count += order.price === -1 ? 1 : 0;
+      count += order.tp === -1 ? 1 : 0;
+      count += order.sl === -1 ? 1 : 0;
       return count;
     };
     const missingOrder = countMissingOrder();
@@ -339,7 +339,7 @@ export class Telegram {
         } ${order.symbol} at ${order.price}`,
       );
 
-      if (missingOrder === 5) {
+      if (missingOrder === 0) {
         this.event.emit('message', [
           order.type,
           order.symbol,
